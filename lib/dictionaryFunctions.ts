@@ -1,28 +1,28 @@
-const getMaxValue = (dictionary: Record<string, [number, number, number?]>, keys: string[], whichNumber: number) => {
+const getMaxValue = (map: Map<string, [number, number, number?]>, keys: string[], whichNumber: number) => {
   let max = -Infinity
 
   for (const key of keys) {
-    max = Math.max(max, dictionary[key].at(whichNumber))
+    max = Math.max(max, map.get(key).at(whichNumber))
   }
 
   return max
 }
 
-const getMinValue = (dictionary: Record<string, [number, number, number?]>, keys: string[], whichNumber: number) => {
+const getMinValue = (map: Map<string, [number, number, number?]>, keys: string[], whichNumber: number) => {
   let min = Infinity
 
   for (const key of keys) {
-    min = Math.min(min, dictionary[key].at(whichNumber))
+    min = Math.min(min, map.get(key).at(whichNumber))
   }
 
   return min
 }
 
-const getKeysByValue = (dictionary: Record<string, [number, number, number?]>, keys: string[], value: number, whichNumber: number) => {
+const getKeysByValue = (map: Map<string, [number, number, number?]>, keys: string[], value: number, whichNumber: number) => {
   const goodKeys: string[] = []
   
   for (const key of keys) {
-    if (dictionary[key].at(whichNumber) === value) {
+    if (map.get(key).at(whichNumber) === value) {
       goodKeys.push(key)
     }
   }
@@ -30,12 +30,12 @@ const getKeysByValue = (dictionary: Record<string, [number, number, number?]>, k
   return goodKeys
 }
 
-const getKeysByMaxValue = (dictionary: Record<string, [number, number, number?]>, keys: string[], whichNumber: number) => {
-  return getKeysByValue(dictionary, keys, getMaxValue(dictionary, keys, whichNumber), whichNumber)
+const getKeysByMaxValue = (map: Map<string, [number, number, number?]>, keys: string[], whichNumber: number) => {
+  return getKeysByValue(map, keys, getMaxValue(map, keys, whichNumber), whichNumber)
 }
 
-const getKeysByMinValue = (dictionary: Record<string, [number, number, number?]>, keys: string[], whichNumber: number) => {
-  return getKeysByValue(dictionary, keys, getMinValue(dictionary, keys, whichNumber), whichNumber)
+const getKeysByMinValue = (map: Map<string, [number, number, number?]>, keys: string[], whichNumber: number) => {
+  return getKeysByValue(map, keys, getMinValue(map, keys, whichNumber), whichNumber)
 }
 
 export { getKeysByMaxValue, getKeysByMinValue }

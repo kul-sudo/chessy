@@ -11,7 +11,7 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
   const botColor = initialFen.split(' ').at(1).at(0) as 'w' | 'b'
 
   // Step 2. Imitating the creation of a tree of moves for 3 steps
-  const data: Record<string, [number, number, number]> = {} // { the first move of the bot: the minimum weight of the final position for all moves of the opponent, the number of moves of the opponent, the minimum number of second moves of the bot for all moves of the opponent after this first move of the bot }
+  const data = new Map<string, [number, number, number]>() // { the first move of the bot: the minimum weight of the final position for all moves of the opponent, the number of moves of the opponent, the minimum number of second moves of the bot for all moves of the opponent after this first move of the bot }
   // Infinity means that the bot can checkmate
   // -Infinity means that the bot can be checkmated by the opponent
 
@@ -32,13 +32,13 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
     chessInstance.move(firstBotMove)
 
     if (chessInstance.in_checkmate()) {
-      data[firstBotMove] = [Infinity, -1, -1] // -1 indicates that it doesn't matter what the element is equal to
+      data.set(firstBotMove, [Infinity, -1, -1]) // -1 indicates that it doesn't matter what the element is equal to
     } else {
       const fenAfterFirstBotMove = chessInstance.fen()
 
       const opponentMoves = chessInstance.moves()
 
-      const finalData: Record<string, [number, number]> = {} // { the move of the opponent: the minimum final weight of the position after the second move of the bot, the number of moves of the bot that come in response }
+      const finalData = new Map<string, [number, number]>() // { the move of the opponent: the minimum final weight of the position after the second move of the bot, the number of moves of the bot that come in response }
     
       for (const opponentMove of opponentMoves) {
         // console.log('opponentMove', opponentMove)
@@ -46,7 +46,7 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
         chessInstance.move(opponentMove)
 
         if (chessInstance.in_checkmate()) {
-          finalData[opponentMove] = [-Infinity, 0]
+          finalData.set(opponentMove, [-Infinity, 0])
         } else {
           const fenAfterOpponentMove = chessInstance.fen()
           
@@ -64,7 +64,7 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
             // console.log('i am here', secondBotMove, maxFinalWeight, botColor)
           }
           
-          finalData[opponentMove] = [maxFinalWeight, secondBotMoves.length]
+          finalData.set(opponentMove, [maxFinalWeight, secondBotMoves.length])
         }
       }
 
@@ -80,16 +80,16 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
       
       // Calculating the worst case for the bot
       // In 'finalData' all the values of the keys from opponentMovesMinWeightMinMoves are equal
-      const minFinalWeight = finalData[opponentMovesMinWeightMinMoves.at(0)].at(0)
-      const minSecondBotMoves = finalData[opponentMovesMinWeightMinMoves.at(0)].at(1)
+      const minFinalWeight = finalData.get(opponentMovesMinWeightMinMoves.at(0)).at(0)
+      const minSecondBotMoves = finalData.get(opponentMovesMinWeightMinMoves.at(0)).at(1)
 
-      data[firstBotMove] = [minFinalWeight, opponentMoves.length, minSecondBotMoves]
+      data.set(firstBotMove, [minFinalWeight, opponentMoves.length, minSecondBotMoves])
     }
   }
 
   // Step 3. Making sure the bot does not make any moves with the queen until the user makes one.
   if (botQueenMoved === false && playerQueenMoved === false) {
-    for (const firstBotMove of Object.keys(data)) {
+    for (const firstBotMove of Array.from(data.keys())) {
       if (firstBotMove.toLowerCase().startsWith('q')) {
         chessInstance.load(initialFen)
         chessInstance.move(firstBotMove)
@@ -98,7 +98,9 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
         
         if (currentWeight <= initialWeight) {
           // Artificially reducing the weight of the position after the move of the queen
-          data[firstBotMove][0] = data[firstBotMove][0] - 1000
+          const currentValue = data.get(firstBotMove)
+          currentValue[0] -= 1000
+          data.set(firstBotMove, currentValue)
         }
       }
     }

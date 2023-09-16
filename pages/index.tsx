@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { Square } from 'chess.js'
-import React, { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as ChessJS from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
@@ -29,6 +29,28 @@ const ChessboardPage: FC = () => {
   const [optionSquares, setOptionSquares] = useState({})
 
   const [isLoading, setIsLoading] = useState(false)
+  
+  const workerRef = useRef<Worker>()
+
+  useEffect(() => {
+    workerRef.current = new Worker(new URL('../lib/worker.ts', import.meta.url))
+    
+    workerRef.current.onmessage = event => {
+      makeBotMoveMain(event.data)
+      setIsLoading(false)
+    }
+
+    return () => {
+      workerRef.current.terminate()
+    }
+  }, [])
+
+  const handleWorker = useCallback((toPost: {
+    fen: string
+    playerQueenMoved: boolean
+  }) => {
+    workerRef.current.postMessage([toPost.fen, toPost.playerQueenMoved])
+  }, [])
 
   const safeGameMutate = (modify: SafeGameMutateProps) => {
     setGame((g: ChessJS.ChessInstance) => {
@@ -246,19 +268,9 @@ const ChessboardPage: FC = () => {
           
           setGame(gameCopy)
           
-          const fn = () => {
-            setIsLoading(true)
-            
-            const worker = new Worker(new URL('../lib/worker.ts', import.meta.url))
-            worker.postMessage([game.fen(), playerQueenMoved])
-        
-            worker.onmessage = event => {
-              makeBotMoveMain(event.data)
-              setIsLoading(false)
-            }
-          }
-        
-          fn()
+          setIsLoading(true)
+
+          handleWorker({ fen: game.fen(), playerQueenMoved: playerQueenMoved })
 
           setMoveFrom('')
           setMoveTo(null)
@@ -271,38 +283,29 @@ const ChessboardPage: FC = () => {
   const onPromotionPieceSelect = (piece: PromotionPieceOption) => {
     if (piece) {
       const gameCopy = { ...game }
-      
+
       gameCopy.move({
         from: moveFrom as Square,
         to: moveTo,
         promotion: (piece[1].toLowerCase() ?? 'q') as 'n' | 'b' | 'r' | 'q'
       })
 
-      const fn = () => {
-        setIsLoading(true)
-        
-        const worker = new Worker(new URL('../lib/worker.ts', import.meta.url))
-        worker.postMessage([game.fen(), playerQueenMoved])
-    
-        worker.onmessage = event => {
-          makeBotMoveMain(event.data)
-          setIsLoading(false)
-        }
-      }
-    
-      fn()
+      setIsLoading(true)
+
+      handleWorker({ fen: game.fen(), playerQueenMoved: playerQueenMoved })
     }
 
     setMoveFrom('')
     setMoveTo(null)
     setShowPromotionDialog(false)
     setOptionSquares({})
-    
+
     return true
   }
 
   const onSquareRightClick = (square: Square) => {
     const colour = 'rgba(0, 0, 255, 0.4)'
+
     setRightClickedSquares({
       ...rightClickedSquares,
       [square]:
@@ -312,6 +315,7 @@ const ChessboardPage: FC = () => {
           : { backgroundColor: colour }
     })
   }
+
 
   return (
     <div style={boardWrapper}>
