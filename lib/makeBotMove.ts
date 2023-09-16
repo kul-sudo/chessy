@@ -130,7 +130,6 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
 
   // console.log('data=', data)
 
-
   return randomMove
 }
 
