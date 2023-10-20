@@ -39,7 +39,7 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
       const opponentMoves = chessInstance.moves()
 
       const finalData = new Map<string, [number, number]>() // { the move of the opponent: the minimum final weight of the position after the second move of the bot, the number of moves of the bot that come in response }
-    
+
       for (const opponentMove of opponentMoves) {
         // console.log('opponentMove', opponentMove)
         chessInstance.load(fenAfterFirstBotMove)
@@ -49,7 +49,7 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
           finalData.set(opponentMove, [-Infinity, 0])
         } else {
           const fenAfterOpponentMove = chessInstance.fen()
-          
+
           const secondBotMoves = chessInstance.moves()
 
           let maxFinalWeight = -Infinity
@@ -57,13 +57,16 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
           for (const secondBotMove of secondBotMoves) {
             chessInstance.load(fenAfterOpponentMove)
             chessInstance.move(secondBotMove)
-            
+
             const fenAfterSecondBotMove = chessInstance.fen()
 
-            maxFinalWeight = Math.max(maxFinalWeight, getWeightOfPosition(fenAfterSecondBotMove, botColor))
+            maxFinalWeight = Math.max(
+              maxFinalWeight,
+              getWeightOfPosition(fenAfterSecondBotMove, botColor)
+            )
             // console.log('i am here', secondBotMove, maxFinalWeight, botColor)
           }
-          
+
           finalData.set(opponentMove, [maxFinalWeight, secondBotMoves.length])
         }
       }
@@ -73,17 +76,33 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
       // console.log('finalData=', finalData)
 
       // Including the moves the opponent can make that result in the minimum final weight for the bot
-      const opponentMovesMinWeight = getKeysByMinValue(finalData, opponentMoves, 0)
+      const opponentMovesMinWeight = getKeysByMinValue(
+        finalData,
+        opponentMoves,
+        0
+      )
 
       // Including the moves the opponent can make that result in the minimum number of second moves that the bot can make
-      const opponentMovesMinWeightMinMoves = getKeysByMinValue(finalData, opponentMovesMinWeight, 1)
-      
+      const opponentMovesMinWeightMinMoves = getKeysByMinValue(
+        finalData,
+        opponentMovesMinWeight,
+        1
+      )
+
       // Calculating the worst case for the bot
       // In 'finalData' all the values of the keys from opponentMovesMinWeightMinMoves are equal
-      const minFinalWeight = finalData.get(opponentMovesMinWeightMinMoves.at(0)).at(0)
-      const minSecondBotMoves = finalData.get(opponentMovesMinWeightMinMoves.at(0)).at(1)
+      const minFinalWeight = finalData
+        .get(opponentMovesMinWeightMinMoves.at(0))
+        .at(0)
+      const minSecondBotMoves = finalData
+        .get(opponentMovesMinWeightMinMoves.at(0))
+        .at(1)
 
-      data.set(firstBotMove, [minFinalWeight, opponentMoves.length, minSecondBotMoves])
+      data.set(firstBotMove, [
+        minFinalWeight,
+        opponentMoves.length,
+        minSecondBotMoves
+      ])
     }
   }
 
@@ -93,9 +112,9 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
       if (firstBotMove.toLowerCase().startsWith('q')) {
         chessInstance.load(initialFen)
         chessInstance.move(firstBotMove)
-        
+
         const currentWeight = getWeightOfPosition(chessInstance.fen(), botColor)
-        
+
         if (currentWeight <= initialWeight) {
           // Artificially reducing the weight of the position after the move of the queen
           const currentValue = data.get(firstBotMove)
@@ -116,9 +135,15 @@ const makeBotMove = (initialFen: string, playerQueenMoved: boolean): string => {
   const bestWeightMinMaxMoves = getKeysByMaxValue(data, bestWeightMinMoves, 2)
 
   // Step 7. Completion.
-  const randomMove = bestWeightMinMaxMoves[Math.floor(Math.random() * bestWeightMinMaxMoves.length)]
-  
-  if (botQueenMoved === false && randomMove.toLocaleLowerCase().startsWith('q')) {
+  const randomMove =
+    bestWeightMinMaxMoves[
+      Math.floor(Math.random() * bestWeightMinMaxMoves.length)
+    ]
+
+  if (
+    botQueenMoved === false &&
+    randomMove.toLocaleLowerCase().startsWith('q')
+  ) {
     botQueenMoved = true
   }
 

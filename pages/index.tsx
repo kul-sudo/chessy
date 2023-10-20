@@ -45,12 +45,12 @@ const ChessboardPage: FC = () => {
     }
   }, [])
 
-  const handleWorker = useCallback((toPost: {
-    fen: string
-    playerQueenMoved: boolean
-  }) => {
+  const handleWorker = useCallback(
+    (toPost: { fen: string; playerQueenMoved: boolean }) => {
       workerRef.current.postMessage([toPost.fen, toPost.playerQueenMoved])
-    }, [])
+    },
+    []
+  )
 
   const safeGameMutate = (modify: SafeGameMutateProps) => {
     setGame((g: ChessJS.ChessInstance) => {
@@ -76,10 +76,10 @@ const ChessboardPage: FC = () => {
     moves.map(move => {
       newSquares[move.to] = {
         background:
-        game.get(move.to) &&
+          game.get(move.to) &&
           game.get(move.to).color !== game.get(square).color
-          ? 'radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)'
-          : 'radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)',
+            ? 'radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)'
+            : 'radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)',
         borderRadius: '50%'
       }
       return move
@@ -236,9 +236,9 @@ const ChessboardPage: FC = () => {
         (foundMove.color === 'w' &&
           foundMove.piece === 'p' &&
           square[1] === '8') ||
-          (foundMove.color === 'b' &&
-            foundMove.piece === 'p' &&
-            square[1] === '1')
+        (foundMove.color === 'b' &&
+          foundMove.piece === 'p' &&
+          square[1] === '1')
       ) {
         setShowPromotionDialog(true)
 
@@ -309,13 +309,12 @@ const ChessboardPage: FC = () => {
     setRightClickedSquares({
       ...rightClickedSquares,
       [square]:
-      rightClickedSquares[square] &&
+        rightClickedSquares[square] &&
         rightClickedSquares[square].backgroundColor === colour
-        ? undefined
-        : { backgroundColor: colour }
+          ? undefined
+          : { backgroundColor: colour }
     })
   }
-
 
   return (
     <div style={boardWrapper}>
@@ -371,9 +370,7 @@ const ChessboardPage: FC = () => {
         undo
       </Button>
 
-      {isLoading && (
-        <Loader />
-      )}
+      {isLoading && <Loader />}
     </div>
   )
 }
