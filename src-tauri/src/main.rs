@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 use shakmaty::{Chess, fen::{Fen, Epd}, CastlingMode, Position};
 
-static TREE_HEIGHT: u16 = 5;
+static TREE_HEIGHT: u16 = 6;
 
 #[derive(Serialize)]
 struct CurrentPosition {
