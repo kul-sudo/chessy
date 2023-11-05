@@ -4,7 +4,7 @@ import * as ChessJS from 'chess.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
-import { Button, Loader } from '@mantine/core'
+import { Button, Loader, Text } from '@mantine/core'
 import { invoke } from '@tauri-apps/api/tauri'
 
 const SHOW_CHESSBOARD = true
@@ -33,9 +33,11 @@ const ChessboardPage: FC = () => {
 
   const workerRef = useRef<Worker>()
 
+  const [passed, setPassed] = useState(0)
   useEffect(() => {
+    const now = Date.now()
     invoke('create_tree').then(() => {
-      console.log('yes')
+      setPassed(Date.now() - now)
     })
   }, [])
 
@@ -378,6 +380,8 @@ const ChessboardPage: FC = () => {
       </Button>
 
       {isLoading && <Loader />}
+
+      <Text>{passed}</Text>
     </div>
   )
 }

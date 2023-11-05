@@ -21,7 +21,7 @@
     "eslint": "latest",
     "eslint-config-next": "latest",
     "million": "latest",
-    "next": "latest",
+    "next": "^latest",
     "react": "latest",
     "react-chessboard": "^3.1.0",
     "react-dom": "latest"
