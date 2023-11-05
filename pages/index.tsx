@@ -1,10 +1,11 @@
 import type { FC } from 'react'
 import type { Square } from 'chess.js'
-import { useCallback, useEffect, useRef, useState } from 'react'
 import * as ChessJS from 'chess.js'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
 import { Button, Loader } from '@mantine/core'
+import { invoke } from '@tauri-apps/api/tauri'
 
 const SHOW_CHESSBOARD = true
 let playerQueenMoved = false
@@ -31,6 +32,12 @@ const ChessboardPage: FC = () => {
   const [isLoading, setIsLoading] = useState(false)
 
   const workerRef = useRef<Worker>()
+
+  useEffect(() => {
+    invoke('create_tree').then(() => {
+      console.log('yes')
+    })
+  }, [])
 
   useEffect(() => {
     workerRef.current = new Worker(new URL('../lib/worker.ts', import.meta.url))
