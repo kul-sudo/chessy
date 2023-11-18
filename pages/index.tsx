@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { Square } from 'chess.js'
 import * as ChessJS from 'chess.js'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
-import { Button, Loader, Text } from '@mantine/core'
+import { Button, Loader } from '@mantine/core'
 import { invoke } from '@tauri-apps/api/tauri'
 import { Move } from 'chess.js'
 
@@ -29,11 +29,14 @@ const ChessboardPage: FC = () => {
 
   const [isLoading, setIsLoading] = useState(false)
 
-  const makeMove = (move: Move) => {
-    const gameCopy = new Chess(game.fen())
-    gameCopy.move(move)
-    setGame(gameCopy)
-  }
+  const makeMove = useCallback(
+    (move: Move) => {
+      const gameCopy = new Chess(game.fen())
+      gameCopy.move(move)
+      setGame(gameCopy)
+    },
+    [game]
+  )
 
   const resetGame = () => {
     const gameCopy = new Chess(game.fen())
@@ -153,10 +156,10 @@ const ChessboardPage: FC = () => {
   const onPromotionPieceSelect = (piece: PromotionPieceOption) => {
     if (piece) {
       makeMove({
-        from: moveFrom,
+        from: moveFrom as Square,
         to: moveTo,
         promotion: (piece[1].toLowerCase() ?? 'q') as ChessJS.PieceSymbol
-      })
+      } as any)
 
       setIsLoading(true)
     }
@@ -182,19 +185,21 @@ const ChessboardPage: FC = () => {
     })
   }
 
-  const makeBotMove = async () => {
-    await invoke('get_move', {
-      current_fen: game.fen()
-    }).then(move => {
-      makeMove(move as Move)
-    })
-  }
+  const game_turn = game.turn()
 
   useEffect(() => {
+    const makeBotMove = async () => {
+      await invoke('get_move', {
+        current_fen: game.fen()
+      }).then(move => {
+        makeMove(move as Move)
+      })
+    }
+
     if (game.turn() === 'b') {
       makeBotMove()
     }
-  }, [game.turn()])
+  }, [game_turn, game, makeMove])
 
   return (
     <div style={boardWrapper}>

@@ -3,12 +3,13 @@
 
 use std::collections::HashMap;
 
+use rand::seq::IteratorRandom;
 use shakmaty::{
     fen::{Epd, Fen},
-    CastlingMode, Chess, Color, EnPassantMode, Position,
+    CastlingMode, Chess, Color, EnPassantMode, Position
 };
 
-static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
+static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
 
 static STALEMATE_WEIGHT: i16 = 200;
 
@@ -173,25 +174,23 @@ async fn get_move(current_fen: String) -> String {
         );
     }
 
-    // let max_weight_moves = move_props
-    //     .iter()
-    //     .max_by_key(|entry| entry.1.weight)
-    //     .unwrap()
-    //     .1
-    //     .weight;
-    //
-    // move_props.retain(|_, move_weight| move_weight.weight != max_weight_moves); // Retaining the
-    //                                                                             // moves with the best final weight
-    //
-    // let min_opponent_moves = move_props
-    //     .iter()
-    //     .min_by_key(|entry| entry.1.successors_number)
-    //     .unwrap()
-    //     .1
-    //     .weight;
-    // move_props.retain(|_, move_weight| move_weight.weight != min_opponent_moves); // Retaining the moves with lowest number of moves the opponent can make next
 
-    return move_props.keys().next().unwrap().to_string();
+    let mut max_weight_moves = i16::MIN;
+    for (_key, value) in &move_props {
+        max_weight_moves = value.weight.max(max_weight_moves)
+    }
+
+    move_props.retain(|_, move_weight| move_weight.weight != max_weight_moves); // Retaining the
+                                                                                // moves with the best final weight
+
+    let mut min_opponent_moves = i16::MIN;
+    for (_key, value) in &move_props {
+        min_opponent_moves = value.weight.min(min_opponent_moves)
+    }
+
+    move_props.retain(|_, move_weight| move_weight.weight != min_opponent_moves); // Retaining the moves with lowest number of moves the opponent can make next
+
+    return move_props.keys().choose(&mut rand::thread_rng()).unwrap().to_string();
 }
 
 #[tokio::main]
