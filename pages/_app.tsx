@@ -4,11 +4,9 @@ import Head from 'next/head'
 import { MantineProvider } from '@mantine/core'
 import { Inter } from 'next/font/google'
 
-const font = Inter({ preload: false })
+const font = Inter({ subsets: ['latin'] })
 
-const App: FC<AppProps> = props => {
-  const { Component, pageProps } = props
-
+const App: FC<AppProps> = ({ Component, pageProps }) => {
   return (
     <>
       <Head>
@@ -20,10 +18,8 @@ const App: FC<AppProps> = props => {
       </Head>
 
       <MantineProvider
-        withGlobalStyles
-        withNormalizeCSS
+        defaultColorScheme="dark"
         theme={{
-          colorScheme: 'dark',
           fontFamily: font.style.fontFamily
         }}
       >

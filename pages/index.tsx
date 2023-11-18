@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import type { Square } from 'chess.js'
 import * as ChessJS from 'chess.js'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
 import { Button, Loader, Text } from '@mantine/core'
 import { invoke } from '@tauri-apps/api/tauri'
+import { Move } from 'chess.js'
 
 const SHOW_CHESSBOARD = true
-let playerQueenMoved = false
 
 const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 
@@ -17,8 +17,6 @@ const boardWrapper = {
   maxWidth: '70vh',
   margin: '3rem auto'
 }
-
-type SafeGameMutateProps = (game: ChessJS.ChessInstance) => undefined
 
 const ChessboardPage: FC = () => {
   const [game, setGame] = useState(new Chess())
@@ -31,42 +29,16 @@ const ChessboardPage: FC = () => {
 
   const [isLoading, setIsLoading] = useState(false)
 
-  const workerRef = useRef<Worker>()
+  const makeMove = (move: Move) => {
+    const gameCopy = new Chess(game.fen())
+    gameCopy.move(move)
+    setGame(gameCopy)
+  }
 
-  const [passed, setPassed] = useState(0)
-  useEffect(() => {
-    const now = Date.now()
-    invoke('create_tree').then(() => {
-      setPassed(Date.now() - now)
-    })
-  }, [])
-
-  useEffect(() => {
-    workerRef.current = new Worker(new URL('../lib/worker.ts', import.meta.url))
-
-    workerRef.current.onmessage = event => {
-      makeBotMoveMain(event.data)
-      setIsLoading(false)
-    }
-
-    return () => {
-      workerRef.current.terminate()
-    }
-  }, [])
-
-  const handleWorker = useCallback(
-    (toPost: { fen: string; playerQueenMoved: boolean }) => {
-      workerRef.current.postMessage([toPost.fen, toPost.playerQueenMoved])
-    },
-    []
-  )
-
-  const safeGameMutate = (modify: SafeGameMutateProps) => {
-    setGame((g: ChessJS.ChessInstance) => {
-      const update = { ...g }
-      modify(update)
-      return update
-    })
+  const resetGame = () => {
+    const gameCopy = new Chess(game.fen())
+    gameCopy.reset()
+    setGame(gameCopy)
   }
 
   const getMoveOptions = (square: Square): boolean => {
@@ -91,6 +63,7 @@ const ChessboardPage: FC = () => {
             : 'radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)',
         borderRadius: '50%'
       }
+
       return move
     })
 
@@ -99,116 +72,11 @@ const ChessboardPage: FC = () => {
     }
 
     setOptionSquares(newSquares)
+
     return true
   }
 
-  const makeBotMoveMain = (botMoveToMake: string) => {
-    if (game.in_stalemate()) {
-      console.log('draw')
-
-      setTimeout(() => {
-        safeGameMutate(game => {
-          game.reset()
-        })
-      }, 3000)
-
-      setMoveSquares({})
-      setOptionSquares({})
-      setRightClickedSquares({})
-
-      return
-    }
-
-    if (game.in_checkmate()) {
-      console.log('checkmate')
-      console.log(`${game.turn()} lost`)
-
-      setTimeout(() => {
-        safeGameMutate(game => {
-          game.reset()
-        })
-      }, 3000)
-
-      setMoveSquares({})
-      setOptionSquares({})
-      setRightClickedSquares({})
-
-      return
-    }
-
-    if (game.in_draw()) {
-      console.log('draw')
-
-      setTimeout(() => {
-        safeGameMutate(game => {
-          game.reset()
-        })
-      }, 3000)
-
-      setMoveSquares({})
-      setOptionSquares({})
-      setRightClickedSquares({})
-
-      return
-    }
-
-    safeGameMutate(game => {
-      const botMove = botMoveToMake
-
-      game.move(botMove)
-    })
-
-    if (game.in_stalemate()) {
-      console.log('draw')
-
-      setTimeout(() => {
-        safeGameMutate(game => {
-          game.reset()
-        })
-      }, 3000)
-
-      setMoveSquares({})
-      setOptionSquares({})
-      setRightClickedSquares({})
-
-      return
-    }
-
-    if (game.in_checkmate()) {
-      console.log('checkmate')
-      console.log(`${game.turn()} lost`)
-
-      setTimeout(() => {
-        safeGameMutate(game => {
-          game.reset()
-        })
-      }, 3000)
-
-      setMoveSquares({})
-      setOptionSquares({})
-      setRightClickedSquares({})
-
-      return
-    }
-
-    if (game.in_draw()) {
-      console.log('draw')
-
-      setTimeout(() => {
-        safeGameMutate(game => {
-          game.reset()
-        })
-      }, 3000)
-
-      setMoveSquares({})
-      setOptionSquares({})
-      setRightClickedSquares({})
-
-      return
-    }
-  }
-
-  const onSquareClick = (square: Square) => {
+  const onSquareClick = async (square: Square) => {
     setRightClickedSquares({})
 
     // from square
@@ -223,12 +91,11 @@ const ChessboardPage: FC = () => {
 
     if (!moveTo) {
       const moves = game.moves({
-        moveFrom,
         verbose: true
-      } as any)
+      })
 
       const foundMove = moves.find(
-        (m: ChessJS.Move) => m.from === moveFrom && m.to === square
+        (m: Move) => m.from === moveFrom && m.to === square
       )
 
       if (!foundMove) {
@@ -254,7 +121,8 @@ const ChessboardPage: FC = () => {
         return
       }
 
-      const gameCopy = { ...game }
+      const gameCopy = new Chess()
+      gameCopy.load(game.fen())
 
       const move = gameCopy.move({
         from: moveFrom,
@@ -264,6 +132,7 @@ const ChessboardPage: FC = () => {
 
       if (move === null) {
         const hasMoveOptions = getMoveOptions(square)
+
         if (hasMoveOptions) {
           setMoveFrom(square)
         }
@@ -271,37 +140,25 @@ const ChessboardPage: FC = () => {
         return
       }
 
-      if (foundMove.piece.toLocaleLowerCase() === 'q') {
-        playerQueenMoved = true
-      }
-
       setGame(gameCopy)
 
       setIsLoading(true)
 
-      handleWorker({ fen: game.fen(), playerQueenMoved: playerQueenMoved })
-
       setMoveFrom('')
       setMoveTo(null)
       setOptionSquares({})
-
-      return
     }
   }
 
   const onPromotionPieceSelect = (piece: PromotionPieceOption) => {
     if (piece) {
-      const gameCopy = { ...game }
-
-      gameCopy.move({
-        from: moveFrom as Square,
+      makeMove({
+        from: moveFrom,
         to: moveTo,
-        promotion: (piece[1].toLowerCase() ?? 'q') as 'n' | 'b' | 'r' | 'q'
+        promotion: (piece[1].toLowerCase() ?? 'q') as ChessJS.PieceSymbol
       })
 
       setIsLoading(true)
-
-      handleWorker({ fen: game.fen(), playerQueenMoved: playerQueenMoved })
     }
 
     setMoveFrom('')
@@ -324,6 +181,20 @@ const ChessboardPage: FC = () => {
           : { backgroundColor: colour }
     })
   }
+
+  const makeBotMove = async () => {
+    await invoke('get_move', {
+      current_fen: game.fen()
+    }).then(move => {
+      makeMove(move as Move)
+    })
+  }
+
+  useEffect(() => {
+    if (game.turn() === 'b') {
+      makeBotMove()
+    }
+  }, [game.turn()])
 
   return (
     <div style={boardWrapper}>
@@ -354,9 +225,7 @@ const ChessboardPage: FC = () => {
       <Button
         disabled={isLoading}
         onClick={() => {
-          safeGameMutate(game => {
-            game.reset()
-          })
+          resetGame()
           setMoveSquares({})
           setOptionSquares({})
           setRightClickedSquares({})
@@ -368,9 +237,10 @@ const ChessboardPage: FC = () => {
       <Button
         disabled={isLoading}
         onClick={() => {
-          safeGameMutate(game => {
-            game.undo()
-          })
+          const gameCopy = new Chess(game.fen())
+          gameCopy.undo()
+          setGame(gameCopy)
+
           setMoveSquares({})
           setOptionSquares({})
           setRightClickedSquares({})
@@ -380,8 +250,6 @@ const ChessboardPage: FC = () => {
       </Button>
 
       {isLoading && <Loader />}
-
-      <Text>{passed}</Text>
     </div>
   )
 }
