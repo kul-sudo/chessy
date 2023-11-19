@@ -9,7 +9,7 @@ use shakmaty::{
     CastlingMode, Chess, Color, EnPassantMode, Position,
 };
 
-static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
+static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
 
 static STALEMATE_WEIGHT: i16 = 200;
 
