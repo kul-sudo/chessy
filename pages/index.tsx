@@ -12,11 +12,11 @@ const SHOW_CHESSBOARD = true
 
 const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 
-const boardWrapper = {
+const boardWrapper = Object.freeze({
   width: '70vw',
   maxWidth: '70vh',
   margin: '3rem auto'
-}
+} as const)
 
 const ChessboardPage: FC = () => {
   const [game, setGame] = useState(new Chess())
@@ -37,6 +37,14 @@ const ChessboardPage: FC = () => {
     },
     [game]
   )
+  const makeBotMove = useCallback(() => {
+    invoke('get_move', {
+      current_fen: game.fen()
+    }).then(move => {
+      makeMove(move as Move)
+      setIsLoading(false)
+    })
+  }, [game, makeMove])
 
   const resetGame = () => {
     const gameCopy = new Chess(game.fen())
@@ -159,7 +167,7 @@ const ChessboardPage: FC = () => {
         from: moveFrom as Square,
         to: moveTo,
         promotion: (piece[1].toLowerCase() ?? 'q') as ChessJS.PieceSymbol
-      } as any)
+      } as Move)
 
       setIsLoading(true)
     }
@@ -188,24 +196,15 @@ const ChessboardPage: FC = () => {
   const game_turn = game.turn()
 
   useEffect(() => {
-    const makeBotMove = async () => {
-      await invoke('get_move', {
-        current_fen: game.fen()
-      }).then(move => {
-        makeMove(move as Move)
-      })
-    }
-
     if (game.turn() === 'b') {
       makeBotMove()
     }
-  }, [game_turn, game, makeMove])
+  }, [game_turn, game, makeBotMove])
 
   return (
     <div style={boardWrapper}>
       {SHOW_CHESSBOARD && (
         <Chessboard
-          id="ClickToMove"
           animationDuration={200}
           arePiecesDraggable={false}
           position={game.fen()}
@@ -237,21 +236,6 @@ const ChessboardPage: FC = () => {
         }}
       >
         reset
-      </Button>
-
-      <Button
-        disabled={isLoading}
-        onClick={() => {
-          const gameCopy = new Chess(game.fen())
-          gameCopy.undo()
-          setGame(gameCopy)
-
-          setMoveSquares({})
-          setOptionSquares({})
-          setRightClickedSquares({})
-        }}
-      >
-        undo
       </Button>
 
       {isLoading && <Loader />}

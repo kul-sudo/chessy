@@ -12,6 +12,9 @@ rust-version = "1.60"
 [profile.release]
 lto = true
 opt-level = 3
+panic = "abort"
+codegen-units = 1
+strip = true
 
 [build-dependencies]
 tauri-build = { version = "1.5.0", features = [] }

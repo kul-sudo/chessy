@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "tauri": "tauri",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -14,16 +15,15 @@
     "@mantine/core": "latest",
     "@mantine/hooks": "latest",
     "@mantine/next": "latest",
-    "@tauri-apps/api": "^1.5.1",
-    "@types/chess.js": "^0.13.4",
-    "brain.js": "^2.0.0-beta.23",
+    "@tauri-apps/api": "latest",
+    "@types/chess.js": "latest",
     "chess.js": "latest",
     "eslint": "latest",
     "eslint-config-next": "latest",
     "million": "latest",
-    "next": "^latest",
+    "next": "latest",
     "react": "latest",
-    "react-chessboard": "^3.1.0",
+    "react-chessboard": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {

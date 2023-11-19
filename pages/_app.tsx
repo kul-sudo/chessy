@@ -3,6 +3,7 @@ import type { AppProps } from 'next/app'
 import Head from 'next/head'
 import { MantineProvider } from '@mantine/core'
 import { Inter } from 'next/font/google'
+import '.././styles/globals.css'
 
 const font = Inter({ subsets: ['latin'] })
 

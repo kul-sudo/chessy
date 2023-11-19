@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use rand::seq::IteratorRandom;
 use shakmaty::{
     fen::{Epd, Fen},
-    CastlingMode, Chess, Color, EnPassantMode, Position
+    CastlingMode, Chess, Color, EnPassantMode, Position,
 };
 
 static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
@@ -28,7 +28,6 @@ struct Node {
     enemy_wants_stalemate: bool,
 }
 
-#[derive(Debug)]
 struct NodeProps {
     weight: i16,
     successors_number: i16,
@@ -67,7 +66,7 @@ impl Node {
                     }
                 } else {
                     NodeProps {
-                        weight: 0 - STALEMATE_WEIGHT,
+                        weight: -STALEMATE_WEIGHT,
                         successors_number: 0,
                     }
                 };
@@ -79,7 +78,7 @@ impl Node {
                     }
                 } else {
                     NodeProps {
-                        weight: 0 - STALEMATE_WEIGHT,
+                        weight: -STALEMATE_WEIGHT,
                         successors_number: 0,
                     }
                 };
@@ -127,23 +126,30 @@ impl Node {
 
 fn get_weight_by_fen(fen: &str, bot_color: Color) -> isize {
     // Calculating the weight for either black or white
-    let only_pieces = &fen[..fen.chars().position(|c| c == ' ').unwrap()];
+    let only_pieces = fen.split_once(' ').unwrap().0;
 
-    let weight_for_white = only_pieces.matches("P").count() as isize * PAWN_WEIGHT
-        + only_pieces.matches("R").count() as isize * ROOK_WEIGHT
-        + only_pieces.matches("Q").count() as isize * QUEEN_WEIGHT
-        + only_pieces.matches("B").count() as isize * BISHOP_WEIGHT
-        + only_pieces.matches("N").count() as isize * KNIGHT_WEIGHT
-        - only_pieces.matches("p").count() as isize * PAWN_WEIGHT
-        - only_pieces.matches("r").count() as isize * ROOK_WEIGHT
-        - only_pieces.matches("q").count() as isize * QUEEN_WEIGHT
-        - only_pieces.matches("b").count() as isize * BISHOP_WEIGHT
-        - only_pieces.matches("n").count() as isize * KNIGHT_WEIGHT;
+    let mut weight_for_white = 0;
+
+    for piece in only_pieces.chars() {
+        match piece {
+            'P' => weight_for_white += PAWN_WEIGHT,
+            'R' => weight_for_white += ROOK_WEIGHT,
+            'Q' => weight_for_white += QUEEN_WEIGHT,
+            'B' => weight_for_white += BISHOP_WEIGHT,
+            'N' => weight_for_white += KNIGHT_WEIGHT,
+            'p' => weight_for_white -= PAWN_WEIGHT,
+            'r' => weight_for_white -= ROOK_WEIGHT,
+            'q' => weight_for_white -= QUEEN_WEIGHT,
+            'b' => weight_for_white -= BISHOP_WEIGHT,
+            'n' => weight_for_white -= KNIGHT_WEIGHT,
+            _ => (),
+        }
+    }
 
     return if bot_color == Color::White {
         weight_for_white
     } else {
-        0 - weight_for_white
+        -weight_for_white
     };
 }
 
@@ -151,7 +157,7 @@ fn get_weight_by_fen(fen: &str, bot_color: Color) -> isize {
 async fn get_move(current_fen: String) -> String {
     let fen: Fen = current_fen.parse().unwrap();
     let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
-    
+
     let bot_color = chess.turn();
     let legal_moves = chess.legal_moves();
 
@@ -167,30 +173,37 @@ async fn get_move(current_fen: String) -> String {
                 fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                 layer_number: 1,
                 bot_color,
-                bot_wants_stalemate: weight_by_fen <= 0 - ROOK_WEIGHT,
+                bot_wants_stalemate: weight_by_fen <= -ROOK_WEIGHT,
                 enemy_wants_stalemate: weight_by_fen >= ROOK_WEIGHT,
             })
             .get_weight(),
         );
     }
 
+    let max_weight_moves = move_props
+        .iter()
+        .max_by_key(|(_, value)| value.weight)
+        .unwrap()
+        .1
+        .weight;
 
-    let mut max_weight_moves = i16::MIN;
-    for (_key, value) in &move_props {
-        max_weight_moves = value.weight.max(max_weight_moves)
-    }
-
-    move_props.retain(|_, move_weight| move_weight.weight != max_weight_moves); // Retaining the
+    move_props.retain(|_, move_weight| move_weight.weight == max_weight_moves); // Retaining the
                                                                                 // moves with the best final weight
 
-    let mut min_opponent_moves = i16::MIN;
-    for (_key, value) in &move_props {
-        min_opponent_moves = value.weight.min(min_opponent_moves)
-    }
+    let min_opponent_moves = move_props
+        .iter()
+        .min_by_key(|(_, value)| value.weight)
+        .unwrap()
+        .1
+        .weight;
 
-    move_props.retain(|_, move_weight| move_weight.weight != min_opponent_moves); // Retaining the moves with lowest number of moves the opponent can make next
+    move_props.retain(|_, move_weight| move_weight.weight == min_opponent_moves); // Retaining the moves with lowest number of moves the opponent can make next
 
-    return move_props.keys().choose(&mut rand::thread_rng()).unwrap().to_string();
+    return move_props
+        .keys()
+        .choose(&mut rand::thread_rng())
+        .unwrap()
+        .to_string();
 }
 
 #[tokio::main]
