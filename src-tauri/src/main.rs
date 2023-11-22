@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use rand::seq::IteratorRandom;
 use shakmaty::{
     fen::{Epd, Fen},
-    CastlingMode, Chess, Color, EnPassantMode, Position,
+    CastlingMode, Chess, Color, EnPassantMode, Move, Position, Role,
 };
 
 static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
@@ -14,11 +14,11 @@ static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
 static STALEMATE_WEIGHT: i16 = 200;
 
 // Piece weights
-static KNIGHT_WEIGHT: isize = 3;
-static BISHOP_WEIGHT: isize = 3;
-static QUEEN_WEIGHT: isize = 9;
-static ROOK_WEIGHT: isize = 5;
-static PAWN_WEIGHT: isize = 1;
+static KNIGHT_WEIGHT: i16 = 3;
+static BISHOP_WEIGHT: i16 = 3;
+static QUEEN_WEIGHT: i16 = 9;
+static ROOK_WEIGHT: i16 = 5;
+static PAWN_WEIGHT: i16 = 1;
 
 struct Node {
     fen: String,
@@ -26,6 +26,8 @@ struct Node {
     bot_color: Color,
     bot_wants_stalemate: bool,
     enemy_wants_stalemate: bool,
+    previous_move: Move,
+    previous_weight: i16,
 }
 
 struct NodeProps {
@@ -86,9 +88,38 @@ impl Node {
         }
 
         // Handling the other cases
+        let mut current_weight = self.previous_weight;
+
+        let is_capture = self.previous_move.is_capture();
+        let is_promotion = self.previous_move.is_promotion();
+
+        if is_capture || is_promotion {
+            let coefficient = if turn == self.bot_color { -1 } else { 1 };
+
+            if is_capture {
+                let delta = match self.previous_move.capture().unwrap() {
+                    Role::Knight => KNIGHT_WEIGHT,
+                    Role::Bishop => BISHOP_WEIGHT,
+                    Role::Queen => QUEEN_WEIGHT,
+                    Role::Rook => ROOK_WEIGHT,
+                    Role::Pawn => PAWN_WEIGHT,
+                    Role::King => 0 // Artificially avoiding "_ => ()"
+                };
+
+                current_weight += delta * coefficient
+            }
+
+            if is_promotion {
+                // The pawn always turns into a queen
+                current_weight += (QUEEN_WEIGHT - PAWN_WEIGHT) * coefficient;
+            }
+        } else {
+            current_weight = self.previous_weight;
+        }
+
         if self.layer_number == TREE_HEIGHT {
             return NodeProps {
-                weight: get_weight_by_fen(&self.fen, self.bot_color) as i16,
+                weight: current_weight,
                 successors_number: 0,
             };
         } else {
@@ -106,6 +137,8 @@ impl Node {
                     bot_color: self.bot_color,
                     bot_wants_stalemate: self.bot_wants_stalemate,
                     enemy_wants_stalemate: self.enemy_wants_stalemate,
+                    previous_move: legal_move.clone(),
+                    previous_weight: current_weight,
                 })
                 .get_weight();
 
@@ -124,11 +157,11 @@ impl Node {
     }
 }
 
-fn get_weight_by_fen(fen: &str, bot_color: Color) -> isize {
+fn get_weight_by_fen(fen: &str, bot_color: Color) -> i16 {
     // Calculating the weight for either black or white
     let only_pieces = fen.split_once(' ').unwrap().0;
 
-    let mut weight_for_white = 0;
+    let mut weight_for_white: i16 = 0;
 
     for piece in only_pieces.chars() {
         match piece {
@@ -159,22 +192,27 @@ async fn get_move(current_fen: String) -> String {
     let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
     let bot_color = chess.turn();
+    let weight_by_fen = get_weight_by_fen(&current_fen, bot_color);
+
     let legal_moves = chess.legal_moves();
+
+    println!("{:?}", legal_moves);
 
     let mut move_props = HashMap::with_capacity(legal_moves.len());
 
-    for legal_move in &legal_moves {
+    for legal_move in legal_moves {
         let pos_after_move = chess.clone().play(&legal_move).unwrap();
-        let weight_by_fen = get_weight_by_fen(&current_fen, bot_color);
 
         move_props.insert(
-            legal_move,
+            legal_move.clone(),
             (Node {
                 fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                 layer_number: 1,
                 bot_color,
                 bot_wants_stalemate: weight_by_fen <= -ROOK_WEIGHT,
                 enemy_wants_stalemate: weight_by_fen >= ROOK_WEIGHT,
+                previous_move: legal_move.clone(),
+                previous_weight: weight_by_fen as i16,
             })
             .get_weight(),
         );
