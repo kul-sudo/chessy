@@ -11,8 +11,6 @@ use shakmaty::{
 
 static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
 
-static STALEMATE_WEIGHT: i16 = 200;
-
 // Piece weights
 static KNIGHT_WEIGHT: i16 = 3;
 static BISHOP_WEIGHT: i16 = 3;
@@ -20,71 +18,56 @@ static QUEEN_WEIGHT: i16 = 9;
 static ROOK_WEIGHT: i16 = 5;
 static PAWN_WEIGHT: i16 = 1;
 
+static CHECKMATE_WEIGHT: i16 = i16::MAX;
+static STALEMATE_WEIGHT: i16 = CHECKMATE_WEIGHT - 1;
+
 struct Node {
     fen: String,
     layer_number: i16,
     bot_color: Color,
     bot_wants_stalemate: bool,
-    enemy_wants_stalemate: bool,
+    // enemy_wants_stalemate: bool,
     previous_move: Move,
     previous_weight: i16,
 }
 
+#[derive(Default)]
 struct NodeProps {
     weight: i16,
-    successors_number: i16,
-    // next_successors_max_number: i16 // Unused right now
+    opponent_first_moves_number: i16,
 }
 
 impl Node {
-    fn get_weight(&self) -> NodeProps {
+    fn get_props(self) -> NodeProps {
         let fen: Fen = self.fen.parse().unwrap();
         let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
         let turn = chess.turn();
 
+        let mut node_props_to_return = NodeProps::default();
+
+        node_props_to_return.opponent_first_moves_number = 0; // May be changed in the future
+
         // Handling a checkmate
         if chess.is_checkmate() {
-            return if self.bot_color == turn {
-                NodeProps {
-                    weight: i16::MIN,
-                    successors_number: 0,
-                }
+            node_props_to_return.weight = if self.bot_color == turn {
+                -CHECKMATE_WEIGHT
             } else {
-                NodeProps {
-                    weight: i16::MAX,
-                    successors_number: 0,
-                }
+                CHECKMATE_WEIGHT
             };
+
+            return node_props_to_return;
         }
 
         // Handling a stalemate
         if chess.is_stalemate() {
-            if self.bot_color == turn {
-                return if self.enemy_wants_stalemate {
-                    NodeProps {
-                        weight: STALEMATE_WEIGHT,
-                        successors_number: 0,
-                    }
-                } else {
-                    NodeProps {
-                        weight: -STALEMATE_WEIGHT,
-                        successors_number: 0,
-                    }
-                };
+            node_props_to_return.weight = if self.bot_wants_stalemate {
+                STALEMATE_WEIGHT
             } else {
-                return if self.bot_wants_stalemate {
-                    NodeProps {
-                        weight: STALEMATE_WEIGHT,
-                        successors_number: 0,
-                    }
-                } else {
-                    NodeProps {
-                        weight: -STALEMATE_WEIGHT,
-                        successors_number: 0,
-                    }
-                };
-            }
+                -STALEMATE_WEIGHT
+            };
+
+            return node_props_to_return;
         }
 
         // Handling the other cases
@@ -103,7 +86,7 @@ impl Node {
                     Role::Queen => QUEEN_WEIGHT,
                     Role::Rook => ROOK_WEIGHT,
                     Role::Pawn => PAWN_WEIGHT,
-                    Role::King => 0 // Artificially avoiding "_ => ()"
+                    Role::King => 0, // Artificially avoiding "_ => ()"
                 };
 
                 current_weight += delta * coefficient
@@ -118,29 +101,38 @@ impl Node {
         }
 
         if self.layer_number == TREE_HEIGHT {
-            return NodeProps {
-                weight: current_weight,
-                successors_number: 0,
-            };
+            node_props_to_return.weight = current_weight;
+
+            return node_props_to_return;
         } else {
             let turn_for_bot = self.bot_color == turn;
             let mut result = if turn_for_bot { i16::MIN } else { i16::MAX };
 
             let legal_moves = &chess.legal_moves();
 
+            let mut opponent_first_moves_number = i16::default();
+
+            if self.layer_number == 1 {
+                opponent_first_moves_number = legal_moves.len() as i16;
+            }
+
             for legal_move in legal_moves {
                 let pos_after_move = chess.clone().play(&legal_move).unwrap();
 
-                let node_props = (Node {
+                let mut node_props = (Node {
                     fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                     layer_number: self.layer_number + 1,
                     bot_color: self.bot_color,
                     bot_wants_stalemate: self.bot_wants_stalemate,
-                    enemy_wants_stalemate: self.enemy_wants_stalemate,
+                    // enemy_wants_stalemate: self.enemy_wants_stalemate,
                     previous_move: legal_move.clone(),
                     previous_weight: current_weight,
                 })
-                .get_weight();
+                .get_props();
+
+                if self.layer_number == 1 {
+                    node_props.opponent_first_moves_number = opponent_first_moves_number
+                }
 
                 result = if turn_for_bot {
                     result.max(node_props.weight)
@@ -149,10 +141,8 @@ impl Node {
                 }
             }
 
-            return NodeProps {
-                weight: result,
-                successors_number: legal_moves.len() as i16,
-            };
+            node_props_to_return.weight = result;
+            return node_props_to_return
         }
     }
 }
@@ -196,8 +186,6 @@ async fn get_move(current_fen: String) -> String {
 
     let legal_moves = chess.legal_moves();
 
-    println!("{:?}", legal_moves);
-
     let mut move_props = HashMap::with_capacity(legal_moves.len());
 
     for legal_move in legal_moves {
@@ -210,32 +198,33 @@ async fn get_move(current_fen: String) -> String {
                 layer_number: 1,
                 bot_color,
                 bot_wants_stalemate: weight_by_fen <= -ROOK_WEIGHT,
-                enemy_wants_stalemate: weight_by_fen >= ROOK_WEIGHT,
+                // enemy_wants_stalemate: weight_by_fen >= ROOK_WEIGHT,
                 previous_move: legal_move.clone(),
                 previous_weight: weight_by_fen as i16,
             })
-            .get_weight(),
+            .get_props(),
         );
     }
 
-    let max_weight_moves = move_props
+    // Retaining the moves with the best final weight
+    let max_weight_move = move_props
         .iter()
         .max_by_key(|(_, value)| value.weight)
         .unwrap()
         .1
         .weight;
 
-    move_props.retain(|_, move_weight| move_weight.weight == max_weight_moves); // Retaining the
-                                                                                // moves with the best final weight
+    move_props.retain(|_, node_props| node_props.weight == max_weight_move);
 
-    let min_opponent_moves = move_props
+    // Retaining the moves with the fewest moves the opponent can make next
+    let min_opponent_move = move_props
         .iter()
-        .min_by_key(|(_, value)| value.weight)
+        .min_by_key(|(_, value)| value.opponent_first_moves_number)
         .unwrap()
         .1
-        .weight;
+        .opponent_first_moves_number;
 
-    move_props.retain(|_, move_weight| move_weight.weight == min_opponent_moves); // Retaining the moves with lowest number of moves the opponent can make next
+    move_props.retain(|_, node_props| node_props.opponent_first_moves_number == min_opponent_move);
 
     return move_props
         .keys()
