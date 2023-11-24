@@ -9,12 +9,12 @@ use shakmaty::{
     CastlingMode, Chess, Color, EnPassantMode, Move, Position, Role,
 };
 
-static TREE_HEIGHT: i16 = 5; // It has to be either equal to or greater than 3
+static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
 
 static MAX_LEGAL_MOVES: i16 = 100;
 
 // Piece weights
-static PAWN_WEIGHT: i16 = 1 * (2 * MAX_LEGAL_MOVES + 1);
+static PAWN_WEIGHT: i16 = 2 * MAX_LEGAL_MOVES + 1; // 1 * (2 * MAX_LEGAL_MOVES + 1)
 static KNIGHT_WEIGHT: i16 = 3 * PAWN_WEIGHT;
 static BISHOP_WEIGHT: i16 = 3 * PAWN_WEIGHT;
 static QUEEN_WEIGHT: i16 = 9 * PAWN_WEIGHT;
@@ -28,7 +28,6 @@ struct Node {
     layer_number: i16,
     bot_color: Color,
     bot_wants_stalemate: bool,
-    // enemy_wants_stalemate: bool,
     previous_move: Move,
     previous_weight: i16,
 }
@@ -89,12 +88,12 @@ impl Node {
         }
 
         if self.layer_number == TREE_HEIGHT {
-            return current_weight;
+            current_weight
         } else {
             let turn_for_bot = self.bot_color == turn;
             let mut result = if turn_for_bot { i16::MIN } else { i16::MAX };
 
-            let legal_moves = &chess.legal_moves();
+            let legal_moves = chess.legal_moves();
 
             let mut moves_number = i16::default();
 
@@ -102,15 +101,14 @@ impl Node {
                 moves_number = legal_moves.len() as i16;
             }
 
-            for legal_move in legal_moves {
-                let pos_after_move = chess.clone().play(&legal_move).unwrap();
+            for legal_move in &legal_moves {
+                let pos_after_move = chess.clone().play(legal_move).unwrap();
 
                 let mut node_weight = (Node {
                     fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                     layer_number: self.layer_number + 1,
                     bot_color: self.bot_color,
                     bot_wants_stalemate: self.bot_wants_stalemate,
-                    // enemy_wants_stalemate: self.enemy_wants_stalemate,
                     previous_move: legal_move.clone(),
                     previous_weight: current_weight,
                 })
@@ -138,7 +136,7 @@ impl Node {
                 }
             }
 
-            return result;
+            result
         }
     }
 }
@@ -163,11 +161,11 @@ fn get_weight_by_fen(fen: &str, bot_color: Color) -> i16 {
         }
     }
 
-    return if bot_color == Color::White {
+    if bot_color == Color::White {
         weight_for_white
     } else {
         -weight_for_white
-    };
+    }
 }
 
 #[tauri::command(async, rename_all = "snake_case")]
@@ -194,7 +192,7 @@ async fn get_move(current_fen: String) -> String {
                 bot_wants_stalemate: weight_by_fen <= -ROOK_WEIGHT,
                 // enemy_wants_stalemate: weight_by_fen >= ROOK_WEIGHT,
                 previous_move: legal_move.clone(),
-                previous_weight: weight_by_fen as i16,
+                previous_weight: weight_by_fen,
             })
             .get_weight(),
         );
@@ -207,7 +205,7 @@ async fn get_move(current_fen: String) -> String {
 
     for move_weight in &move_weights {
         if move_weight.1 == max_weight_move {
-            filtered_move_weights.insert(move_weight.clone().0, move_weight.clone().1);
+            filtered_move_weights.insert(move_weight.0, move_weight.1);
         }
     }
 
