@@ -46,11 +46,11 @@ const ChessboardPage: NextPage = () => {
     })
   }, [game, makeMove])
 
-  const resetGame = () => {
+  const resetGame = useCallback(() => {
     const gameCopy = new Chess(game.fen())
     gameCopy.reset()
     setGame(gameCopy)
-  }
+  }, [game])
 
   const getMoveOptions = (square: Square): boolean => {
     const moves = game.moves({
@@ -192,6 +192,12 @@ const ChessboardPage: NextPage = () => {
           : { backgroundColor: colour }
     })
   }
+
+  useEffect(() => {
+    if (game.isGameOver()) {
+      resetGame()
+    }
+  }, [game, resetGame])
 
   const game_turn = game.turn()
 
