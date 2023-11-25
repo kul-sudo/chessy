@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { NextPage } from 'next'
 import type { AppProps } from 'next/app'
 import Head from 'next/head'
 import { MantineProvider } from '@mantine/core'
@@ -7,7 +7,7 @@ import '.././styles/globals.css'
 
 const font = Inter({ subsets: ['latin'] })
 
-const App: FC<AppProps> = ({ Component, pageProps }) => {
+const App: NextPage<AppProps> = ({ Component, pageProps }) => {
   return (
     <>
       <Head>

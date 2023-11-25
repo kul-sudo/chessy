@@ -1,12 +1,12 @@
-import type { FC } from 'react'
+import type { NextPage } from 'next'
 import type { Square } from 'chess.js'
 import * as ChessJS from 'chess.js'
 import { useCallback, useEffect, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
+import { Move } from 'chess.js'
 import { Button, Loader } from '@mantine/core'
 import { invoke } from '@tauri-apps/api/tauri'
-import { Move } from 'chess.js'
 
 const SHOW_CHESSBOARD = true
 
@@ -18,7 +18,7 @@ const boardWrapper = Object.freeze({
   margin: '3rem auto'
 } as const)
 
-const ChessboardPage: FC = () => {
+const ChessboardPage: NextPage = () => {
   const [game, setGame] = useState(new Chess())
   const [moveFrom, setMoveFrom] = useState<Square | ''>()
   const [moveTo, setMoveTo] = useState<Square | null>(null)
