@@ -135,7 +135,7 @@ impl Node {
 
                 let node_weights_abs = node_weight.abs();
 
-                if node_weights_abs != CHECKMATE_WEIGHT || node_weights_abs != STALEMATE_WEIGHT {
+                if node_weights_abs != CHECKMATE_WEIGHT && node_weights_abs != STALEMATE_WEIGHT {
                     match self.layer_number {
                         1 => node_weight -= moves_number, // The more moves the opponent has, the worse
                         2 => node_weight += moves_number, // The more moves the bot has, the better
