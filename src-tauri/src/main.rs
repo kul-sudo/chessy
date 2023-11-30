@@ -9,7 +9,7 @@ use shakmaty::{
     CastlingMode, Chess, Color, EnPassantMode, Move, Position, Role,
 };
 
-static TREE_HEIGHT: i16 = 5; // It has to be either equal to or greater than 3
+static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
 
 static MAX_LEGAL_MOVES: i16 = 100;
 
