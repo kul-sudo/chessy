@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Neg};
 
 use rand::seq::IteratorRandom;
 use shakmaty::{
@@ -58,7 +58,7 @@ impl Node {
         if chess.is_checkmate() {
             // Return the worst or best weight depending on who the checkmate has been performed by
             return if self.bot_color == turn {
-                -CHECKMATE_WEIGHT
+                CHECKMATE_WEIGHT.neg()
             } else {
                 CHECKMATE_WEIGHT
             };
@@ -71,7 +71,7 @@ impl Node {
             return if self.bot_wants_stalemate {
                 STALEMATE_WEIGHT
             } else {
-                -STALEMATE_WEIGHT
+                STALEMATE_WEIGHT.neg()
             };
         }
 
@@ -192,9 +192,10 @@ fn get_weight_by_fen(fen: &str, bot_color: Color) -> i16 {
     if bot_color == Color::White {
         weight_for_white
     } else {
-        -weight_for_white
+        weight_for_white.neg()
     }
 }
+
 #[tauri::command(async, rename_all = "snake_case")]
 /// Get the best move for the given FEN.
 async fn get_move(current_fen: String) -> String {
@@ -221,7 +222,7 @@ async fn get_move(current_fen: String) -> String {
                 fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                 layer_number: 1,
                 bot_color,
-                bot_wants_stalemate: weight_by_fen <= -ROOK_WEIGHT, // It's been experimentally determined that when the bot doesn't have a rook, it should want to get a stalemate
+                bot_wants_stalemate: weight_by_fen <= ROOK_WEIGHT.neg(), // It's been experimentally determined that when the bot doesn't have a rook, it should want to get a stalemate
                 previous_move: legal_move.clone(),
                 previous_weight: weight_by_fen,
             })
@@ -234,14 +235,14 @@ async fn get_move(current_fen: String) -> String {
 
     // Keep the elements with the best weight in the hashmap
     let mut filtered_move_weights: HashMap<&Move, &i16> = HashMap::new();
+
     for move_weight in &move_weights {
         if move_weight.1 == max_weight_move {
             filtered_move_weights.insert(move_weight.0, move_weight.1);
         }
     }
 
-    // Get a random move from the collection of the best moves to make the way the bot plays
-    // arbitrary
+    // Get a random move from the collection of the best moves to make the way the bot plays arbitrary
     return filtered_move_weights
         .keys()
         .choose(&mut rand::thread_rng())
