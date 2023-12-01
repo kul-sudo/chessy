@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{collections::HashMap, ops::Neg};
+use std::collections::HashMap;
 
 use rand::seq::IteratorRandom;
 use shakmaty::{
@@ -58,7 +58,7 @@ impl Node {
         if chess.is_checkmate() {
             // Return the worst or best weight depending on who the checkmate has been performed by
             return if self.bot_color == turn {
-                CHECKMATE_WEIGHT.neg()
+                -CHECKMATE_WEIGHT
             } else {
                 CHECKMATE_WEIGHT
             };
@@ -71,12 +71,11 @@ impl Node {
             return if self.bot_wants_stalemate {
                 STALEMATE_WEIGHT
             } else {
-                STALEMATE_WEIGHT.neg()
+                -STALEMATE_WEIGHT
             };
         }
 
         // Handling the other cases (everything all the way down)
-
         // If there has been no pawn promotion or capture, there's no need to recalculate the weight
         let mut current_node_weight = self.previous_weight;
 
@@ -114,11 +113,11 @@ impl Node {
 
             let legal_moves = chess.legal_moves();
 
-            let mut moves_number = i16::default();
-
-            if self.layer_number <= 2 {
-                moves_number = legal_moves.len() as i16; // Will be needed to adjust the weight
-            }
+            let moves_number = if self.layer_number <= 2 {
+                legal_moves.len() as i16
+            } else {
+                i16::default()
+            };
 
             for legal_move in &legal_moves {
                 let pos_after_move = chess.clone().play(legal_move).unwrap();
@@ -136,10 +135,10 @@ impl Node {
                 let node_weights_abs = node_weight.abs();
 
                 if node_weights_abs != CHECKMATE_WEIGHT && node_weights_abs != STALEMATE_WEIGHT {
-                    match self.layer_number {
-                        1 => node_weight -= moves_number, // The more moves the opponent has, the worse
-                        2 => node_weight += moves_number, // The more moves the bot has, the better
-                        _ => (),
+                    node_weight += match self.layer_number {
+                        1 => -moves_number, // The more moves the opponent has, the worse
+                        2 => moves_number,  // The more moves the bot has, the better
+                        _ => unreachable!(),
                     }
                 }
 
@@ -164,7 +163,7 @@ impl Node {
             Role::Bishop => BISHOP_WEIGHT,
             Role::Queen => QUEEN_WEIGHT,
             Role::Rook => ROOK_WEIGHT,
-            Role::King => 0, // Artificially avoiding "_ => ()"
+            Role::King => unreachable!(),
         }
     }
 }
@@ -174,25 +173,25 @@ fn get_weight_by_fen(fen: &str, bot_color: Color) -> i16 {
     let mut weight_for_white: i16 = 0;
 
     for piece in fen.split_once(' ').unwrap().0.chars() {
-        match piece {
-            'P' => weight_for_white += PAWN_WEIGHT,
-            'R' => weight_for_white += ROOK_WEIGHT,
-            'Q' => weight_for_white += QUEEN_WEIGHT,
-            'B' => weight_for_white += BISHOP_WEIGHT,
-            'N' => weight_for_white += KNIGHT_WEIGHT,
-            'p' => weight_for_white -= PAWN_WEIGHT,
-            'r' => weight_for_white -= ROOK_WEIGHT,
-            'q' => weight_for_white -= QUEEN_WEIGHT,
-            'b' => weight_for_white -= BISHOP_WEIGHT,
-            'n' => weight_for_white -= KNIGHT_WEIGHT,
-            _ => (),
+        weight_for_white += match piece {
+            'P' => PAWN_WEIGHT,
+            'R' => ROOK_WEIGHT,
+            'Q' => QUEEN_WEIGHT,
+            'B' => BISHOP_WEIGHT,
+            'N' => KNIGHT_WEIGHT,
+            'p' => -PAWN_WEIGHT,
+            'r' => -ROOK_WEIGHT,
+            'q' => -QUEEN_WEIGHT,
+            'b' => -BISHOP_WEIGHT,
+            'n' => -KNIGHT_WEIGHT,
+            _ => unreachable!(),
         }
     }
 
     if bot_color == Color::White {
         weight_for_white
     } else {
-        weight_for_white.neg()
+        -weight_for_white
     }
 }
 
@@ -222,7 +221,7 @@ async fn get_move(current_fen: String) -> String {
                 fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                 layer_number: 1,
                 bot_color,
-                bot_wants_stalemate: weight_by_fen <= ROOK_WEIGHT.neg(), // It's been experimentally determined that when the bot doesn't have a rook, it should want to get a stalemate
+                bot_wants_stalemate: weight_by_fen <= -ROOK_WEIGHT, // It's been experimentally determined that when the bot doesn't have a rook, it should want to get a stalemate
                 previous_move: legal_move.clone(),
                 previous_weight: weight_by_fen,
             })
