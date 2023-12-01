@@ -138,7 +138,7 @@ impl Node {
                     node_weight += match self.layer_number {
                         1 => -moves_number, // The more moves the opponent has, the worse
                         2 => moves_number,  // The more moves the bot has, the better
-                        _ => unreachable!(),
+                        _ => 0,
                     }
                 }
 
@@ -163,7 +163,7 @@ impl Node {
             Role::Bishop => BISHOP_WEIGHT,
             Role::Queen => QUEEN_WEIGHT,
             Role::Rook => ROOK_WEIGHT,
-            Role::King => unreachable!(),
+            Role::King => 0,
         }
     }
 }
@@ -184,7 +184,7 @@ fn get_weight_by_fen(fen: &str, bot_color: Color) -> i16 {
             'q' => -QUEEN_WEIGHT,
             'b' => -BISHOP_WEIGHT,
             'n' => -KNIGHT_WEIGHT,
-            _ => unreachable!(),
+            _ => 0,
         }
     }
 
