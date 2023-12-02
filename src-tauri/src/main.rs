@@ -9,7 +9,7 @@ use shakmaty::{
     CastlingMode, Chess, Color, EnPassantMode, Move, Position, Role,
 };
 
-static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
+static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
 
 static MAX_LEGAL_MOVES: i16 = 100;
 
@@ -24,7 +24,6 @@ static CHECKMATE_WEIGHT: i16 = i16::MAX;
 static STALEMATE_WEIGHT: i16 = CHECKMATE_WEIGHT - 1;
 
 /// Node struct.
-#[derive(Clone)]
 struct Node {
     /// The FEN of the node.
     fen: String,
@@ -107,8 +106,7 @@ impl Node {
 
         // If the top has been reached, it's time to return the current node weight, otherwise create the successor for this node
         if self.layer_number == TREE_HEIGHT {
-            // current_node_weight
-            get_weight_by_fen(&self.fen, self.bot_color)
+            current_node_weight
         } else {
             let turn_for_bot = self.bot_color == turn;
             let mut result = if turn_for_bot { i16::MIN } else { i16::MAX };
