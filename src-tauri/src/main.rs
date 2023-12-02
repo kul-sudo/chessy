@@ -9,12 +9,12 @@ use shakmaty::{
     CastlingMode, Chess, Color, EnPassantMode, Move, Position, Role,
 };
 
-static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
+static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
 
 static MAX_LEGAL_MOVES: i16 = 100;
 
 // Piece weights
-static PAWN_WEIGHT: i16 = 2 * MAX_LEGAL_MOVES + 1; // 1 * (2 * MAX_LEGAL_MOVES + 1)
+static PAWN_WEIGHT: i16 = 3 * MAX_LEGAL_MOVES + 1; // 1 * (3 * MAX_LEGAL_MOVES + 1)
 static KNIGHT_WEIGHT: i16 = 3 * PAWN_WEIGHT;
 static BISHOP_WEIGHT: i16 = 3 * PAWN_WEIGHT;
 static QUEEN_WEIGHT: i16 = 9 * PAWN_WEIGHT;
@@ -24,6 +24,7 @@ static CHECKMATE_WEIGHT: i16 = i16::MAX;
 static STALEMATE_WEIGHT: i16 = CHECKMATE_WEIGHT - 1;
 
 /// Node struct.
+#[derive(Clone)]
 struct Node {
     /// The FEN of the node.
     fen: String,
@@ -45,9 +46,9 @@ struct Node {
 }
 
 impl Node {
-    /// Get the weight of the current node (the final weight when both the bot and the opponent play in the best way possible);
+    /// Get the rating of the current node (the final weight when both the bot and the opponent play in the best way possible);
     /// this weight may be adjusted according to the number of the legal moves that can me made by either the bot or the opponent.
-    fn get_node_weight(self) -> i16 {
+    fn get_node_rating(self) -> i16 {
         // Create an instance of Chess with the current FEN
         let fen: Fen = self.fen.parse().unwrap();
         let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
@@ -106,7 +107,8 @@ impl Node {
 
         // If the top has been reached, it's time to return the current node weight, otherwise create the successor for this node
         if self.layer_number == TREE_HEIGHT {
-            current_node_weight
+            // current_node_weight
+            get_weight_by_fen(&self.fen, self.bot_color)
         } else {
             let turn_for_bot = self.bot_color == turn;
             let mut result = if turn_for_bot { i16::MIN } else { i16::MAX };
@@ -122,7 +124,7 @@ impl Node {
             for legal_move in &legal_moves {
                 let pos_after_move = chess.clone().play(legal_move).unwrap();
 
-                let mut node_weight = (Node {
+                let mut node_rating = (Node {
                     fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                     layer_number: self.layer_number + 1,
                     bot_color: self.bot_color,
@@ -130,24 +132,24 @@ impl Node {
                     previous_move: legal_move.clone(),
                     previous_weight: current_node_weight,
                 })
-                .get_node_weight();
+                .get_node_rating();
 
-                let node_weights_abs = node_weight.abs();
+                let node_rating_abs = node_rating.abs();
 
-                if node_weights_abs != CHECKMATE_WEIGHT && node_weights_abs != STALEMATE_WEIGHT {
-                    node_weight += match self.layer_number {
-                        1 => -moves_number, // The more moves the opponent has, the worse
-                        2 => moves_number,  // The more moves the bot has, the better
+                if node_rating_abs != CHECKMATE_WEIGHT && node_rating_abs != STALEMATE_WEIGHT {
+                    node_rating += match self.layer_number {
+                        1 => -(2 * moves_number), // The more moves the opponent has, the worse
+                        2 => moves_number,        // The more moves the bot has, the better
                         _ => 0,
-                    }
+                    };
                 }
 
                 result = if turn_for_bot {
                     // Chosing the best move for the bot
-                    result.max(node_weight)
+                    result.max(node_rating)
                 } else {
                     // Chosing the best move for the opponent
-                    result.min(node_weight)
+                    result.min(node_rating)
                 }
             }
 
@@ -170,7 +172,7 @@ impl Node {
 
 /// Calculate the weight for either black or white using the given FEN.
 fn get_weight_by_fen(fen: &str, bot_color: Color) -> i16 {
-    let mut weight_for_white: i16 = 0;
+    let mut weight_for_white = i16::default();
 
     for piece in fen.split_once(' ').unwrap().0.chars() {
         weight_for_white += match piece {
@@ -207,15 +209,15 @@ async fn get_move(current_fen: String) -> String {
 
     let legal_moves = chess.legal_moves();
 
-    let mut move_weights = HashMap::with_capacity(legal_moves.len()); // { move: weight of the move }
+    let mut move_ratings = HashMap::with_capacity(legal_moves.len()); // { move: rating of the move }
 
     // Start to fill the hashmap (working with the first layer)
     for legal_move in legal_moves {
         let pos_after_move = chess.clone().play(&legal_move).unwrap(); // Get the position (Chess
                                                                        // insance after a hypothetical move)
 
-        // Start with the root moves that continue the tree and eventually return the weight
-        move_weights.insert(
+        // Start with the root moves that continue the tree and eventually return the rating
+        move_ratings.insert(
             legal_move.clone(),
             (Node {
                 fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
@@ -225,24 +227,24 @@ async fn get_move(current_fen: String) -> String {
                 previous_move: legal_move.clone(),
                 previous_weight: weight_by_fen,
             })
-            .get_node_weight(),
+            .get_node_rating(),
         );
     }
 
-    // Retain the moves with the best final weight
-    let max_weight_move = move_weights.iter().max_by_key(|entry| entry.1).unwrap().1;
+    // Retain the moves with the best final rating
+    let max_rating_move = move_ratings.iter().max_by_key(|entry| entry.1).unwrap().1;
 
-    // Keep the elements with the best weight in the hashmap
-    let mut filtered_move_weights: HashMap<&Move, &i16> = HashMap::new();
+    // Keep the elements with the best rating
+    let mut filtered_move_ratings: HashMap<&Move, &i16> = HashMap::new();
 
-    for move_weight in &move_weights {
-        if move_weight.1 == max_weight_move {
-            filtered_move_weights.insert(move_weight.0, move_weight.1);
+    for move_rating in &move_ratings {
+        if move_rating.1 == max_rating_move {
+            filtered_move_ratings.insert(move_rating.0, move_rating.1);
         }
     }
 
     // Get a random move from the collection of the best moves to make the way the bot plays arbitrary
-    return filtered_move_weights
+    return filtered_move_ratings
         .keys()
         .choose(&mut rand::thread_rng())
         .unwrap()
