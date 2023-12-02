@@ -27,6 +27,7 @@ const ChessboardPage: NextPage = () => {
   const [moveSquares, setMoveSquares] = useState({})
   const [optionSquares, setOptionSquares] = useState({})
 
+  const [run, setRun] = useState<boolean>(true)
   const [isLoading, setIsLoading] = useState(false)
 
   const makeMove = useCallback(
@@ -52,160 +53,160 @@ const ChessboardPage: NextPage = () => {
     setGame(gameCopy)
   }, [game])
 
-  const getMoveOptions = (square: Square): boolean => {
-    const moves = game.moves({
-      square,
-      verbose: true
-    })
-
-    if (moves.length === 0) {
-      setOptionSquares({})
-      return false
-    }
-
-    const newSquares = {}
-
-    moves.map(move => {
-      newSquares[move.to] = {
-        background:
-          game.get(move.to) &&
-          game.get(move.to).color !== game.get(square).color
-            ? 'radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)'
-            : 'radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)',
-        borderRadius: '50%'
-      }
-
-      return move
-    })
-
-    newSquares[square] = {
-      background: 'rgba(255, 255, 0, 0.4)'
-    }
-
-    setOptionSquares(newSquares)
-
-    return true
-  }
-
-  const onSquareClick = async (square: Square) => {
-    setRightClickedSquares({})
-
-    // from square
-    if (!moveFrom) {
-      const hasMoveOptions = getMoveOptions(square)
-      if (hasMoveOptions) {
-        setMoveFrom(square)
-      }
-
-      return
-    }
-
-    if (!moveTo) {
-      const moves = game.moves({
-        verbose: true
-      })
-
-      const foundMove = moves.find(
-        (m: Move) => m.from === moveFrom && m.to === square
-      )
-
-      if (!foundMove) {
-        const hasMoveOptions = getMoveOptions(square)
-
-        setMoveFrom(hasMoveOptions ? square : '')
-
-        return
-      }
-
-      setMoveTo(square)
-
-      if (
-        (foundMove.color === 'w' &&
-          foundMove.piece === 'p' &&
-          square[1] === '8') ||
-        (foundMove.color === 'b' &&
-          foundMove.piece === 'p' &&
-          square[1] === '1')
-      ) {
-        setShowPromotionDialog(true)
-
-        return
-      }
-
-      const gameCopy = new Chess()
-      gameCopy.load(game.fen())
-
-      const move = gameCopy.move({
-        from: moveFrom,
-        to: square,
-        promotion: 'q'
-      })
-
-      if (move === null) {
-        const hasMoveOptions = getMoveOptions(square)
-
-        if (hasMoveOptions) {
-          setMoveFrom(square)
-        }
-
-        return
-      }
-
-      setGame(gameCopy)
-
-      setIsLoading(true)
-
-      setMoveFrom('')
-      setMoveTo(null)
-      setOptionSquares({})
-    }
-  }
-
-  const onPromotionPieceSelect = (piece: PromotionPieceOption) => {
-    if (piece) {
-      makeMove({
-        from: moveFrom as Square,
-        to: moveTo,
-        promotion: (piece[1].toLowerCase() ?? 'q') as ChessJS.PieceSymbol
-      } as Move)
-
-      setIsLoading(true)
-    }
-
-    setMoveFrom('')
-    setMoveTo(null)
-    setShowPromotionDialog(false)
-    setOptionSquares({})
-
-    return true
-  }
-
-  const onSquareRightClick = (square: Square) => {
-    const colour = 'rgba(0, 0, 255, 0.4)'
-
-    setRightClickedSquares({
-      ...rightClickedSquares,
-      [square]:
-        rightClickedSquares[square] &&
-        rightClickedSquares[square].backgroundColor === colour
-          ? undefined
-          : { backgroundColor: colour }
-    })
-  }
+  // const getMoveOptions = (square: Square): boolean => {
+  //   const moves = game.moves({
+  //     square,
+  //     verbose: true
+  //   })
+  //
+  //   if (moves.length === 0) {
+  //     setOptionSquares({})
+  //     return false
+  //   }
+  //
+  //   const newSquares = {}
+  //
+  //   moves.map(move => {
+  //     newSquares[move.to] = {
+  //       background:
+  //         game.get(move.to) &&
+  //         game.get(move.to).color !== game.get(square).color
+  //           ? 'radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)'
+  //           : 'radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)',
+  //       borderRadius: '50%'
+  //     }
+  //
+  //     return move
+  //   })
+  //
+  //   newSquares[square] = {
+  //     background: 'rgba(255, 255, 0, 0.4)'
+  //   }
+  //
+  //   setOptionSquares(newSquares)
+  //
+  //   return true
+  // }
+  //
+  // const onSquareClick = async (square: Square) => {
+  //   setRightClickedSquares({})
+  //
+  //   // from square
+  //   if (!moveFrom) {
+  //     const hasMoveOptions = getMoveOptions(square)
+  //     if (hasMoveOptions) {
+  //       setMoveFrom(square)
+  //     }
+  //
+  //     return
+  //   }
+  //
+  //   if (!moveTo) {
+  //     const moves = game.moves({
+  //       verbose: true
+  //     })
+  //
+  //     const foundMove = moves.find(
+  //       (m: Move) => m.from === moveFrom && m.to === square
+  //     )
+  //
+  //     if (!foundMove) {
+  //       const hasMoveOptions = getMoveOptions(square)
+  //
+  //       setMoveFrom(hasMoveOptions ? square : '')
+  //
+  //       return
+  //     }
+  //
+  //     setMoveTo(square)
+  //
+  //     if (
+  //       (foundMove.color === 'w' &&
+  //         foundMove.piece === 'p' &&
+  //         square[1] === '8') ||
+  //       (foundMove.color === 'b' &&
+  //         foundMove.piece === 'p' &&
+  //         square[1] === '1')
+  //     ) {
+  //       setShowPromotionDialog(true)
+  //
+  //       return
+  //     }
+  //
+  //     const gameCopy = new Chess()
+  //     gameCopy.load(game.fen())
+  //
+  //     const move = gameCopy.move({
+  //       from: moveFrom,
+  //       to: square,
+  //       promotion: 'q'
+  //     })
+  //
+  //     if (move === null) {
+  //       const hasMoveOptions = getMoveOptions(square)
+  //
+  //       if (hasMoveOptions) {
+  //         setMoveFrom(square)
+  //       }
+  //
+  //       return
+  //     }
+  //
+  //     setGame(gameCopy)
+  //
+  //     setIsLoading(true)
+  //
+  //     setMoveFrom('')
+  //     setMoveTo(null)
+  //     setOptionSquares({})
+  //   }
+  // }
+  //
+  // const onPromotionPieceSelect = (piece: PromotionPieceOption) => {
+  //   if (piece) {
+  //     makeMove({
+  //       from: moveFrom as Square,
+  //       to: moveTo,
+  //       promotion: (piece[1].toLowerCase() ?? 'q') as ChessJS.PieceSymbol
+  //     } as Move)
+  //
+  //     setIsLoading(true)
+  //   }
+  //
+  //   setMoveFrom('')
+  //   setMoveTo(null)
+  //   setShowPromotionDialog(false)
+  //   setOptionSquares({})
+  //
+  //   return true
+  // }
+  //
+  // const onSquareRightClick = (square: Square) => {
+  //   const colour = 'rgba(0, 0, 255, 0.4)'
+  //
+  //   setRightClickedSquares({
+  //     ...rightClickedSquares,
+  //     [square]:
+  //       rightClickedSquares[square] &&
+  //       rightClickedSquares[square].backgroundColor === colour
+  //         ? undefined
+  //         : { backgroundColor: colour }
+  //   })
+  // }
 
   useEffect(() => {
     if (game.isGameOver()) {
-      resetGame()
+      setTimeout(resetGame, 5000)
     }
   }, [game, resetGame])
 
   const game_turn = game.turn()
 
   useEffect(() => {
-    if (game.turn() === 'b') {
+    if (run && !game.isGameOver()) {
       makeBotMove()
     }
-  }, [game_turn, game, makeBotMove])
+  }, [game_turn, game, run, makeBotMove])
 
   return (
     <div style={boardWrapper}>
@@ -214,9 +215,9 @@ const ChessboardPage: NextPage = () => {
           animationDuration={200}
           arePiecesDraggable={false}
           position={game.fen()}
-          onSquareClick={onSquareClick}
-          onSquareRightClick={onSquareRightClick}
-          onPromotionPieceSelect={onPromotionPieceSelect}
+          // onSquareClick={onSquareClick}
+          // onSquareRightClick={onSquareRightClick}
+          // onPromotionPieceSelect={onPromotionPieceSelect}
           customBoardStyle={{
             borderRadius: '4px',
             boxShadow: '0 2px 10px rgba(0, 0, 0, 0.5)',
@@ -242,6 +243,15 @@ const ChessboardPage: NextPage = () => {
         }}
       >
         reset
+      </Button>
+
+      <Button
+        disabled={isLoading}
+        onClick={() => {
+          setRun(!run)
+        }}
+      >
+        {run ? 'Stop' : 'Run'}
       </Button>
 
       {isLoading && <Loader />}

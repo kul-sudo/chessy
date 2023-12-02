@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, num::NonZeroU32};
 
 use rand::seq::IteratorRandom;
 use shakmaty::{
@@ -13,6 +13,9 @@ static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
 
 static MAX_LEGAL_MOVES: i16 = 100;
 
+/// How many moves an opening is supposed to take.
+static MAX_OPENING_MOVES: u32 = 20;
+
 // Piece weights
 static PAWN_WEIGHT: i16 = 3 * MAX_LEGAL_MOVES + 1; // 1 * (3 * MAX_LEGAL_MOVES + 1)
 static KNIGHT_WEIGHT: i16 = 3 * PAWN_WEIGHT;
@@ -23,6 +26,15 @@ static ROOK_WEIGHT: i16 = 5 * PAWN_WEIGHT;
 static CHECKMATE_WEIGHT: i16 = i16::MAX;
 static STALEMATE_WEIGHT: i16 = CHECKMATE_WEIGHT - 1;
 
+/// The color the bot is playing on.
+static mut BOT_COLOR: Color = Color::White;
+
+/// It's been experimentally determined that when the bot doesn't have a rook, it should want to get a stalemate.
+static mut BOT_WANTS_STALEMATE: bool = false;
+
+/// Whether the opening part of the game is still going.
+static mut OPENING_IS_GOING: bool = false;
+
 /// Node struct.
 struct Node {
     /// The FEN of the node.
@@ -30,12 +42,6 @@ struct Node {
 
     /// The layer number the node is currently at.
     layer_number: i16,
-
-    /// The color the bot is playing with.
-    bot_color: Color,
-
-    /// It's been experimentally determined that when the bot doesn't have a rook, it should want to get a stalemate.
-    bot_wants_stalemate: bool,
 
     /// The move of the node edge (every egde connects 2 nodes).
     previous_move: Move,
@@ -52,12 +58,16 @@ impl Node {
         let fen: Fen = self.fen.parse().unwrap();
         let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
+        let bot_color = unsafe { BOT_COLOR };
+        let bot_wants_stalemate = unsafe { BOT_WANTS_STALEMATE };
+        let opening_is_going = unsafe { OPENING_IS_GOING };
+
         let turn = chess.turn();
 
         // Handle a possible checkmate
         if chess.is_checkmate() {
             // Return the worst or best weight depending on who the checkmate has been performed by
-            return if self.bot_color == turn {
+            return if bot_color == turn {
                 -CHECKMATE_WEIGHT
             } else {
                 CHECKMATE_WEIGHT
@@ -68,7 +78,7 @@ impl Node {
         if chess.is_stalemate() {
             // Return the worst or best weight depending on whether the bot wants a stalemate;
             // however, a checkmate has a higher weight than a stalemate
-            return if self.bot_wants_stalemate {
+            return if bot_wants_stalemate {
                 STALEMATE_WEIGHT
             } else {
                 -STALEMATE_WEIGHT
@@ -86,7 +96,7 @@ impl Node {
             // If there has either been a capture or promotion, an
             // adjustment is done
 
-            let coefficient = if turn == self.bot_color { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
+            let coefficient = if turn == bot_color { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
 
             if is_capture {
                 // Adjust the weight as a result of the captured piece
@@ -108,7 +118,7 @@ impl Node {
         if self.layer_number == TREE_HEIGHT {
             current_node_weight
         } else {
-            let turn_for_bot = self.bot_color == turn;
+            let turn_for_bot = bot_color == turn;
             let mut result = if turn_for_bot { i16::MIN } else { i16::MAX };
 
             let legal_moves = chess.legal_moves();
@@ -125,8 +135,6 @@ impl Node {
                 let mut node_rating = (Node {
                     fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                     layer_number: self.layer_number + 1,
-                    bot_color: self.bot_color,
-                    bot_wants_stalemate: self.bot_wants_stalemate,
                     previous_move: legal_move.clone(),
                     previous_weight: current_node_weight,
                 })
@@ -137,7 +145,15 @@ impl Node {
                 if node_rating_abs != CHECKMATE_WEIGHT && node_rating_abs != STALEMATE_WEIGHT {
                     node_rating += match self.layer_number {
                         1 => -(2 * moves_number), // The more moves the opponent has, the worse
-                        2 => moves_number,        // The more moves the bot has, the better
+                        2 => {
+                            // Needed during the opening for the bot to develop its pieces;
+                            // however, after the end of the opening, it causes endless repetitive moves
+                            if opening_is_going {
+                                moves_number
+                            } else {
+                                0
+                            }
+                        } // The more moves the bot has, the better
                         _ => 0,
                     };
                 }
@@ -203,7 +219,13 @@ async fn get_move(current_fen: String) -> String {
     let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
     let bot_color = chess.turn(); // The current turn/color the bot has to work with
+
     let weight_by_fen = get_weight_by_fen(&current_fen, bot_color);
+    let fullmoves = chess.fullmoves();
+
+    unsafe { BOT_COLOR = bot_color }
+    unsafe { BOT_WANTS_STALEMATE = weight_by_fen <= -ROOK_WEIGHT }
+    unsafe { OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap() }
 
     let legal_moves = chess.legal_moves();
 
@@ -220,8 +242,6 @@ async fn get_move(current_fen: String) -> String {
             (Node {
                 fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
                 layer_number: 1,
-                bot_color,
-                bot_wants_stalemate: weight_by_fen <= -ROOK_WEIGHT, // It's been experimentally determined that when the bot doesn't have a rook, it should want to get a stalemate
                 previous_move: legal_move.clone(),
                 previous_weight: weight_by_fen,
             })
