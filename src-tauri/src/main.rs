@@ -9,7 +9,7 @@ use shakmaty::{
     CastlingMode, Chess, Color, EnPassantMode, Move, Position, Role,
 };
 
-static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
+static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
 
 static MAX_LEGAL_MOVES: i16 = 100;
 
@@ -53,14 +53,13 @@ struct Node {
 impl Node {
     /// Get the rating of the current node (the final weight when both the bot and the opponent play in the best way possible);
     /// this weight may be adjusted according to the number of the legal moves that can me made by either the bot or the opponent.
-    fn get_node_rating(self) -> i16 {
+    fn get_node_rating(self) -> String {
         // Create an instance of Chess with the current FEN
         let fen: Fen = self.fen.parse().unwrap();
         let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
         let bot_color = unsafe { BOT_COLOR };
         let bot_wants_stalemate = unsafe { BOT_WANTS_STALEMATE };
-        let opening_is_going = unsafe { OPENING_IS_GOING };
 
         let turn = chess.turn();
 
@@ -68,9 +67,9 @@ impl Node {
         if chess.is_checkmate() {
             // Return the worst or best weight depending on who the checkmate has been performed by
             return if bot_color == turn {
-                -CHECKMATE_WEIGHT
+                (-CHECKMATE_WEIGHT).to_string()
             } else {
-                CHECKMATE_WEIGHT
+                CHECKMATE_WEIGHT.to_string()
             };
         }
 
@@ -79,9 +78,9 @@ impl Node {
             // Return the worst or best weight depending on whether the bot wants a stalemate;
             // however, a checkmate has a higher weight than a stalemate
             return if bot_wants_stalemate {
-                STALEMATE_WEIGHT
+                STALEMATE_WEIGHT.to_string()
             } else {
-                -STALEMATE_WEIGHT
+                (-STALEMATE_WEIGHT).to_string()
             };
         }
 
@@ -116,9 +115,11 @@ impl Node {
 
         // If the top has been reached, it's time to return the current node weight, otherwise create the successor for this node
         if self.layer_number == TREE_HEIGHT {
-            current_node_weight
+            current_node_weight.to_string()
         } else {
             let turn_for_bot = bot_color == turn;
+            let opening_is_going = unsafe { OPENING_IS_GOING };
+
             let mut result = if turn_for_bot { i16::MIN } else { i16::MAX };
 
             let legal_moves = chess.legal_moves();
@@ -138,7 +139,9 @@ impl Node {
                     previous_move: legal_move.clone(),
                     previous_weight: current_node_weight,
                 })
-                .get_node_rating();
+                .get_node_rating()
+                .parse::<i16>()
+                .unwrap();
 
                 let node_rating_abs = node_rating.abs();
 
@@ -167,7 +170,7 @@ impl Node {
                 }
             }
 
-            result
+            result.to_string()
         }
     }
 
@@ -179,7 +182,7 @@ impl Node {
             Role::Bishop => BISHOP_WEIGHT,
             Role::Queen => QUEEN_WEIGHT,
             Role::Rook => ROOK_WEIGHT,
-            Role::King => 0,
+            _ => 0,
         }
     }
 }
@@ -223,9 +226,11 @@ async fn get_move(current_fen: String) -> String {
     let weight_by_fen = get_weight_by_fen(&current_fen, bot_color);
     let fullmoves = chess.fullmoves();
 
-    unsafe { BOT_COLOR = bot_color }
-    unsafe { BOT_WANTS_STALEMATE = weight_by_fen <= -ROOK_WEIGHT }
-    unsafe { OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap() }
+    unsafe {
+        BOT_COLOR = bot_color;
+        BOT_WANTS_STALEMATE = weight_by_fen <= -ROOK_WEIGHT;
+        OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap()
+    }
 
     let legal_moves = chess.legal_moves();
 
@@ -245,7 +250,9 @@ async fn get_move(current_fen: String) -> String {
                 previous_move: legal_move.clone(),
                 previous_weight: weight_by_fen,
             })
-            .get_node_rating(),
+            .get_node_rating()
+            .parse::<i16>()
+            .unwrap(),
         );
     }
 
@@ -262,11 +269,11 @@ async fn get_move(current_fen: String) -> String {
     }
 
     // Get a random move from the collection of the best moves to make the way the bot plays arbitrary
-    return filtered_move_ratings
+    filtered_move_ratings
         .keys()
         .choose(&mut rand::thread_rng())
         .unwrap()
-        .to_string();
+        .to_string()
 }
 
 #[tokio::main]

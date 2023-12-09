@@ -3,12 +3,15 @@ import type { Square } from 'chess.js'
 import * as ChessJS from 'chess.js'
 import { useCallback, useEffect, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
-import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
 import { Move } from 'chess.js'
 import { Button, Loader } from '@mantine/core'
 import { invoke } from '@tauri-apps/api/tauri'
+import { writeFile } from '@tauri-apps/api/fs'
 
 const SHOW_CHESSBOARD = true
+const WRITE_TO_FILE = true
+
+let gameHistory: string[] = []
 
 const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 
@@ -196,13 +199,25 @@ const ChessboardPage: NextPage = () => {
 
   useEffect(() => {
     if (game.isGameOver()) {
-      setTimeout(resetGame, 5000)
+      if (WRITE_TO_FILE) {
+        writeFile({
+          path: '/home/user/Documents/chessy/data/game.json',
+          contents: JSON.stringify(gameHistory)
+        })
+      }
+      setTimeout(() => {
+        gameHistory = []
+        resetGame()
+      }, 5000)
     }
   }, [game, resetGame])
 
   const game_turn = game.turn()
 
   useEffect(() => {
+    if (WRITE_TO_FILE) {
+      gameHistory.push(game.fen())
+    }
     if (run && !game.isGameOver()) {
       makeBotMove()
     }
