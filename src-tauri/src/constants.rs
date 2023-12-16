@@ -1,5 +1,3 @@
-use shakmaty::Move;
-
 pub static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
 pub static MAX_LEGAL_MOVES: i16 = 100;
 

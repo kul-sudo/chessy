@@ -37,15 +37,14 @@ async fn get_move(current_fen: String) -> String {
         fen,
         layer_number: 0,
         previous_move: None,
-        previous_weight: weight_by_fen, // !!! In the root, previous_weight is equal to the weight
-                                        // of the root
+        previous_weight: weight_by_fen, // !!! In the root, previous_weight is equal to the weight of the root
+        previous_current_rating: -INFINITY,
     })
     .get_node_rating_or_move()
     {
         value.to_string()
     } else {
-        "blabla".to_string() // We know that there can't be anything under 'else', so this return
-                             // is just a way to avoid it
+        unreachable!()
     }
 }
 

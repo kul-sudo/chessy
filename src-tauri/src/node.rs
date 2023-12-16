@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use rand::{seq::SliceRandom, thread_rng};
 use shakmaty::{fen::Fen, CastlingMode, Chess, EnPassantMode, Move, Position, Role};
 
 use crate::{constants::*, mut_static::*, utils::RatingOrMove};
@@ -17,6 +18,10 @@ pub struct Node {
 
     /// The weight of the predecessor node.
     pub previous_weight: i16,
+
+    /// The current value of `b.current_rating` which is the parent of `a`; the value of
+    /// `b.current_rating` at the moment when `a` was created.
+    pub previous_current_rating: i16,
 }
 
 impl Node {
@@ -34,6 +39,7 @@ impl Node {
         let bot_wants_stalemate = unsafe { BOT_WANTS_STALEMATE };
 
         let bot_turn = chess.turn() == bot_color;
+        let mut current_rating = if bot_turn { -INFINITY } else { INFINITY };
 
         if self.layer_number > 0 {
             // Handle a possible checkmate
@@ -110,7 +116,10 @@ impl Node {
 
             let moves_number = legal_moves_len as i16;
 
-            for legal_move in legal_moves {
+            let mut legal_moves_to_shuffle = legal_moves.clone();
+            legal_moves_to_shuffle.shuffle(&mut thread_rng());
+
+            for legal_move in legal_moves_to_shuffle {
                 let pos_after_move = chess.clone().play(&legal_move).unwrap();
 
                 // Create a child node
@@ -119,11 +128,26 @@ impl Node {
                     layer_number: self.layer_number + 1,
                     previous_move: Some(legal_move.clone()),
                     previous_weight: current_node_weight,
+                    previous_current_rating: current_rating,
                 })
                 .get_node_rating_or_move();
 
                 // Handle the child node rating
                 if let RatingOrMove::Rating(mut value) = node_rating {
+                    current_rating = current_rating.max(value);
+
+                    if self.layer_number == 1 {
+                        if current_rating < self.previous_current_rating {
+                            return RatingOrMove::Rating(INFINITY);
+                        }
+                    } else if bot_turn {
+                        if current_rating >= self.previous_current_rating {
+                            return RatingOrMove::Rating(INFINITY);
+                        }
+                    } else if current_rating <= self.previous_current_rating {
+                        return RatingOrMove::Rating(-INFINITY);
+                    }
+
                     if self.layer_number == 0 {
                         // Make a hashmap of { move: rating }
                         move_ratings.insert(legal_move, value);
@@ -183,13 +207,6 @@ impl Node {
                         .unwrap()
                         .clone(),
                 )
-                // // Get a random move from the collection of the best moves to make the way the bot plays arbitrary
-                // RatingOrMove::Move(
-                //     filtered_move_ratings
-                //         .keys()
-                //         .choose(&mut rand::thread_rng()).clone()
-                //         .unwrap(),
-                // )
             } else {
                 RatingOrMove::Rating(result)
             }
