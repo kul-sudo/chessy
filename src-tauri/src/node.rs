@@ -1,20 +1,19 @@
-use shakmaty::{
-    fen::{Epd, Fen},
-    CastlingMode, Chess, EnPassantMode, Move, Position, Role,
-};
+use std::collections::HashMap;
 
-use crate::{constants::*, mut_static::*};
+use shakmaty::{fen::Fen, CastlingMode, Chess, EnPassantMode, Move, Position, Role};
+
+use crate::{constants::*, mut_static::*, utils::RatingOrMove};
 
 /// Node struct.
 pub struct Node {
     /// The FEN of the node.
-    pub fen: String,
+    pub fen: Fen,
 
     /// The layer number the node is currently at.
     pub layer_number: i16,
 
     /// The move of the node edge (every egde connects 2 nodes).
-    pub previous_move: Move,
+    pub previous_move: Option<Move>,
 
     /// The weight of the predecessor node.
     pub previous_weight: i16,
@@ -23,124 +22,177 @@ pub struct Node {
 impl Node {
     /// Get the rating of the current node (the final weight when both the bot and the opponent play in the best way possible);
     /// this weight may be adjusted according to the number of the legal moves that can me made by either the bot or the opponent.
-    pub fn get_node_rating(self) -> String {
+    pub fn get_node_rating_or_move(self) -> RatingOrMove {
         // Create an instance of Chess with the current FEN
-        let fen: Fen = self.fen.parse().unwrap();
-        let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
+        let chess: Chess = self
+            .fen
+            .clone()
+            .into_position(CastlingMode::Standard)
+            .unwrap();
 
         let bot_color = unsafe { BOT_COLOR };
         let bot_wants_stalemate = unsafe { BOT_WANTS_STALEMATE };
 
-        let turn = chess.turn();
+        let bot_turn = chess.turn() == bot_color;
 
-        // Handle a possible checkmate
-        if chess.is_checkmate() {
-            // Return the worst or best weight depending on who the checkmate has been performed by
-            return if bot_color == turn {
-                (-CHECKMATE_WEIGHT).to_string()
-            } else {
-                CHECKMATE_WEIGHT.to_string()
-            };
-        }
-
-        // Handle a possible stalemate
-        if chess.is_stalemate() {
-            // Return the worst or best weight depending on whether the bot wants a stalemate;
-            // however, a checkmate has a higher weight than a stalemate
-            return if bot_wants_stalemate {
-                STALEMATE_WEIGHT.to_string()
-            } else {
-                (-STALEMATE_WEIGHT).to_string()
-            };
-        }
-
-        // Handling the other cases (everything all the way down)
-        // If there has been no pawn promotion or capture, there's no need to recalculate the weight
-        let mut current_node_weight = self.previous_weight;
-
-        let is_capture = self.previous_move.is_capture();
-        let is_promotion = self.previous_move.is_promotion();
-
-        if is_capture || is_promotion {
-            // If there has either been a capture or promotion, an
-            // adjustment is done
-
-            let coefficient = if turn == bot_color { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
-
-            if is_capture {
-                // Adjust the weight as a result of the captured piece
-                current_node_weight +=
-                    self.get_piece_weight(self.previous_move.capture().unwrap()) * coefficient
+        if self.layer_number > 0 {
+            // Handle a possible checkmate
+            if chess.is_checkmate() {
+                // Return the worst or best weight depending on who the checkmate has been performed by
+                return if bot_turn {
+                    RatingOrMove::Rating(-CHECKMATE_WEIGHT)
+                } else {
+                    RatingOrMove::Rating(CHECKMATE_WEIGHT)
+                };
             }
 
-            if is_promotion {
-                // Adjust the weight as a result of the promoted pawn
-                current_node_weight +=
-                    (self.get_piece_weight(self.previous_move.promotion().unwrap()) - PAWN_WEIGHT)
-                        * coefficient;
+            // Handle a possible stalemate
+            if chess.is_stalemate() {
+                // Return the worst or best weight depending on whether the bot wants a stalemate;
+                // however, a checkmate has a higher weight than a stalemate
+                return if bot_wants_stalemate {
+                    RatingOrMove::Rating(STALEMATE_WEIGHT)
+                } else {
+                    RatingOrMove::Rating(-STALEMATE_WEIGHT)
+                };
             }
+        }
+
+        // Handling all the other cases (everything all the way down)
+        let legal_moves = chess.legal_moves();
+        let legal_moves_len = legal_moves.len();
+        let mut move_ratings: HashMap<Move, i16> = HashMap::with_capacity(legal_moves_len); // { move: rating of the move };
+                                                                                            // need only for the root (layer number = 0)
+        let mut current_node_weight;
+
+        // Start handling the weight
+        if self.layer_number == 0 {
+            current_node_weight = self.previous_weight // !!! In the root, previous_weight is equal
+                                                       // to equal to the weight of the root
         } else {
+            // If there has been no pawn promotion or capture, there's no need to recalculate the weight
             current_node_weight = self.previous_weight;
-        }
 
-        // If the top has been reached, it's time to return the current node weight, otherwise create the successor for this node
+            let previous_move = self.previous_move.as_ref().unwrap();
+            let is_capture = previous_move.is_capture();
+            let is_promotion = previous_move.is_promotion();
+
+            if is_capture || is_promotion {
+                // If there has either been a capture or promotion, an
+                // adjustment is done
+
+                let coefficient = if bot_turn { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
+
+                if is_capture {
+                    // Adjust the weight as a result of the captured piece
+                    current_node_weight +=
+                        self.get_piece_weight(previous_move.capture().unwrap()) * coefficient
+                }
+
+                if is_promotion {
+                    // Adjust the weight as a result of the promoted pawn
+                    current_node_weight +=
+                        (self.get_piece_weight(previous_move.promotion().unwrap()) - PAWN_WEIGHT)
+                            * coefficient;
+                }
+            }
+        }
+        // Finish handling the weight
+
         if self.layer_number == TREE_HEIGHT {
-            current_node_weight.to_string()
+            // If the top has been reached, it's time to return the current node weight,
+            // otherwise create the successor for this node
+            RatingOrMove::Rating(current_node_weight)
         } else {
-            let turn_for_bot = bot_color == turn;
             let opening_is_going = unsafe { OPENING_IS_GOING };
 
-            let mut result = if turn_for_bot { i16::MIN } else { i16::MAX };
+            let mut result = if bot_turn { -INFINITY } else { INFINITY };
 
-            let legal_moves = chess.legal_moves();
+            let moves_number = legal_moves_len as i16;
 
-            let moves_number = if self.layer_number <= 2 {
-                legal_moves.len() as i16
-            } else {
-                i16::default()
-            };
+            for legal_move in legal_moves {
+                let pos_after_move = chess.clone().play(&legal_move).unwrap();
 
-            for legal_move in &legal_moves {
-                let pos_after_move = chess.clone().play(legal_move).unwrap();
-
-                let mut node_rating = (Node {
-                    fen: Epd::from_position(pos_after_move, EnPassantMode::Legal).to_string(),
+                // Create a child node
+                let node_rating = (Node {
+                    fen: Fen::from_position(pos_after_move, EnPassantMode::Legal),
                     layer_number: self.layer_number + 1,
-                    previous_move: legal_move.clone(),
+                    previous_move: Some(legal_move.clone()),
                     previous_weight: current_node_weight,
                 })
-                .get_node_rating()
-                .parse::<i16>()
-                .unwrap();
+                .get_node_rating_or_move();
 
-                let node_rating_abs = node_rating.abs();
+                // Handle the child node rating
+                if let RatingOrMove::Rating(mut value) = node_rating {
+                    if self.layer_number == 0 {
+                        // Make a hashmap of { move: rating }
+                        move_ratings.insert(legal_move, value);
+                    } else {
+                        // Find the maximum or minimum rating depending on the turn
+                        let node_rating_abs = value.abs();
 
-                if node_rating_abs != CHECKMATE_WEIGHT && node_rating_abs != STALEMATE_WEIGHT {
-                    node_rating += match self.layer_number {
-                        1 => -(2 * moves_number), // The more moves the opponent has, the worse
-                        2 => {
-                            // Needed during the opening for the bot to develop its pieces;
-                            // however, after the end of the opening, it causes endless repetitive moves
-                            if opening_is_going {
-                                moves_number
-                            } else {
-                                0
+                        // If there's no checkmate or stalemate, the rating is corrected according
+                        // to the number of moves of the bot and the opponent
+                        if node_rating_abs != CHECKMATE_WEIGHT
+                            && node_rating_abs != STALEMATE_WEIGHT
+                        {
+                            value += match self.layer_number {
+                                1 => -(2 * moves_number), // The more moves the opponent has, the worse
+                                2 => {
+                                    // Needed during the opening for the bot to develop its pieces;
+                                    // however, after the end of the opening, it causes endless repetitive moves
+                                    if opening_is_going {
+                                        moves_number
+                                    } else {
+                                        0
+                                    }
+                                } // The more moves the bot has, the better
+                                _ => 0,
                             }
-                        } // The more moves the bot has, the better
-                        _ => 0,
-                    };
-                }
+                        } // Finish the correction
 
-                result = if turn_for_bot {
-                    // Chosing the best move for the bot
-                    result.max(node_rating)
-                } else {
-                    // Chosing the best move for the opponent
-                    result.min(node_rating)
+                        result = if bot_turn {
+                            // Chosing the best move for the bot
+                            result.max(value)
+                        } else {
+                            // Chosing the best move for the opponent
+                            result.min(value)
+                        }
+                    }
                 }
             }
 
-            result.to_string()
+            if self.layer_number == 0 {
+                // Retain the moves with the best final rating
+                let max_rating_move = &move_ratings.iter().max_by_key(|entry| entry.1).unwrap().1;
+
+                // Keep the elements with the best rating
+                let mut filtered_move_ratings: HashMap<&Move, &i16> = HashMap::new();
+
+                for move_rating in &move_ratings {
+                    if &move_rating.1 == max_rating_move {
+                        filtered_move_ratings.insert(move_rating.0, move_rating.1);
+                    }
+                }
+
+                RatingOrMove::Move(
+                    filtered_move_ratings
+                        .keys()
+                        .copied()
+                        .next()
+                        .unwrap()
+                        .clone(),
+                )
+                // // Get a random move from the collection of the best moves to make the way the bot plays arbitrary
+                // RatingOrMove::Move(
+                //     filtered_move_ratings
+                //         .keys()
+                //         .choose(&mut rand::thread_rng()).clone()
+                //         .unwrap(),
+                // )
+            } else {
+                RatingOrMove::Rating(result)
+            }
         }
     }
 

@@ -1,3 +1,5 @@
+use shakmaty::Move;
+
 pub static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
 pub static MAX_LEGAL_MOVES: i16 = 100;
 
@@ -11,5 +13,6 @@ pub static BISHOP_WEIGHT: i16 = 3 * PAWN_WEIGHT;
 pub static QUEEN_WEIGHT: i16 = 9 * PAWN_WEIGHT;
 pub static ROOK_WEIGHT: i16 = 5 * PAWN_WEIGHT;
 
-pub static CHECKMATE_WEIGHT: i16 = i16::MAX;
+pub static INFINITY: i16 = i16::MAX;
+pub static CHECKMATE_WEIGHT: i16 = INFINITY - 1;
 pub static STALEMATE_WEIGHT: i16 = CHECKMATE_WEIGHT - 1;
