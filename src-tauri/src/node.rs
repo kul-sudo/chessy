@@ -136,17 +136,17 @@ impl Node {
                 if let RatingOrMove::Rating(mut value) = node_rating {
                     current_rating = current_rating.max(value);
 
-                    if self.layer_number == 1 {
-                        if current_rating < self.previous_current_rating {
-                            return RatingOrMove::Rating(INFINITY);
-                        }
-                    } else if bot_turn {
-                        if current_rating >= self.previous_current_rating {
-                            return RatingOrMove::Rating(INFINITY);
-                        }
-                    } else if current_rating <= self.previous_current_rating {
-                        return RatingOrMove::Rating(-INFINITY);
-                    }
+                    // if self.layer_number == 1 {
+                    //     if current_rating < self.previous_current_rating {
+                    //         return RatingOrMove::Rating(INFINITY);
+                    //     }
+                    // } else if bot_turn {
+                    //     if current_rating >= self.previous_current_rating {
+                    //         return RatingOrMove::Rating(INFINITY);
+                    //     }
+                    // } else if current_rating <= self.previous_current_rating {
+                    //     return RatingOrMove::Rating(-INFINITY);
+                    // }
 
                     if self.layer_number == 0 {
                         // Make a hashmap of { move: rating }
