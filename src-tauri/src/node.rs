@@ -45,30 +45,30 @@ impl Node {
             // Handle a possible checkmate
             if chess.is_checkmate() {
                 // Return the worst or best weight depending on who the checkmate has been performed by
-                return if bot_turn {
-                    RatingOrMove::Rating(-CHECKMATE_WEIGHT)
+                return RatingOrMove::Rating(if bot_turn {
+                    -CHECKMATE_WEIGHT
                 } else {
-                    RatingOrMove::Rating(CHECKMATE_WEIGHT)
-                };
+                    CHECKMATE_WEIGHT
+                });
             }
 
             // Handle a possible stalemate
             if chess.is_stalemate() {
                 // Return the worst or best weight depending on whether the bot wants a stalemate;
                 // however, a checkmate has a higher weight than a stalemate
-                return if bot_wants_stalemate {
-                    RatingOrMove::Rating(STALEMATE_WEIGHT)
+                return RatingOrMove::Rating(if bot_wants_stalemate {
+                    STALEMATE_WEIGHT
                 } else {
-                    RatingOrMove::Rating(-STALEMATE_WEIGHT)
-                };
+                    -STALEMATE_WEIGHT
+                });
             }
         }
 
         // Handling all the other cases (everything all the way down)
         let legal_moves = chess.legal_moves();
         let legal_moves_len = legal_moves.len();
-        let mut move_ratings: HashMap<Move, i16> = HashMap::with_capacity(legal_moves_len); // { move: rating of the move };
-                                                                                            // need only for the root (layer number = 0)
+        let mut move_ratings = HashMap::with_capacity(legal_moves_len); // { move: rating of the move };
+                                                                        // need only for the root (layer number = 0)
         let mut current_node_weight;
 
         // Start handling the weight
@@ -102,8 +102,7 @@ impl Node {
                             * coefficient;
                 }
             }
-        }
-        // Finish handling the weight
+        } // Finish handling the weight
 
         if self.layer_number == TREE_HEIGHT {
             // If the top has been reached, it's time to return the current node weight,

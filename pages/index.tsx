@@ -4,7 +4,7 @@ import * as ChessJS from 'chess.js'
 import { useCallback, useEffect, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { Move } from 'chess.js'
-import { Button, Loader } from '@mantine/core'
+import { Box, Button, Loader } from '@mantine/core'
 import { invoke } from '@tauri-apps/api/tauri'
 import { writeFile } from '@tauri-apps/api/fs'
 
@@ -14,12 +14,6 @@ const WRITE_TO_FILE = true
 let gameHistory: string[] = []
 
 const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
-
-const boardWrapper = Object.freeze({
-  width: '70vw',
-  maxWidth: '70vh',
-  margin: '3rem auto'
-} as const)
 
 const ChessboardPage: NextPage = () => {
   const [game, setGame] = useState(new Chess())
@@ -224,7 +218,13 @@ const ChessboardPage: NextPage = () => {
   }, [game_turn, game, run, makeBotMove])
 
   return (
-    <div style={boardWrapper}>
+    <div
+      style={{
+        width: '70vw',
+        maxWidth: '70vh',
+        margin: '3rem auto'
+      }}
+    >
       {SHOW_CHESSBOARD && (
         <Chessboard
           animationDuration={200}
