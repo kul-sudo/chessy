@@ -65,7 +65,8 @@ impl Node {
         }
 
         // Handling all the other cases (everything all the way down)
-        let mut current_rating = if bot_turn { -INFINITY } else { INFINITY };
+        let mut current_rating = if bot_turn { -INFINITY } else { INFINITY }; // Needed for
+                                                                              // optimisation
 
         let legal_moves = chess.legal_moves();
         let moves_number = legal_moves.len() as i16;
@@ -108,7 +109,6 @@ impl Node {
         } else {
             let opening_is_going = unsafe { OPENING_IS_GOING };
 
-            // ?????
             let mut rating_to_return = if bot_turn { -INFINITY } else { INFINITY };
 
             let mut legal_moves_to_shuffle = legal_moves.clone();
@@ -127,19 +127,31 @@ impl Node {
                 })
                 .get_node_rating_or_move()
                 {
-                    current_rating = current_rating.max(child_node_rating);
+                    // Start the optimisation
+                    current_rating = if bot_turn {
+                        current_rating.max(child_node_rating)
+                    } else {
+                        current_rating.min(child_node_rating)
+                    };
 
-                    // if self.layer_number == 1 {
-                    //     if current_rating < self.previous_current_rating {
-                    //         return RatingOrMove::Rating(INFINITY);
-                    //     }
-                    // } else if bot_turn {
-                    //     if current_rating >= self.previous_current_rating {
-                    //         return RatingOrMove::Rating(INFINITY);
-                    //     }
-                    // } else if current_rating <= self.previous_current_rating {
-                    //     return RatingOrMove::Rating(-INFINITY);
-                    // }
+                    match self.layer_number {
+                        1 => {
+                            if current_rating < self.previous_current_rating {
+                                return RatingOrMove::Rating(-INFINITY);
+                            }
+                        }
+                        case if case > 1 => {
+                            if bot_turn {
+                                if current_rating >= self.previous_current_rating {
+                                    return RatingOrMove::Rating(INFINITY);
+                                }
+                            } else if current_rating <= self.previous_current_rating {
+                                return RatingOrMove::Rating(-INFINITY);
+                            }
+                        }
+                        _ => (),
+                    }
+                    // End the optimisation
 
                     if self.layer_number == 0 {
                         // Make a hashmap of { move: rating }
@@ -152,6 +164,7 @@ impl Node {
                         // to the number of moves of the bot and the opponent
                         if child_node_rating_abs != CHECKMATE_WEIGHT
                             && child_node_rating_abs != STALEMATE_WEIGHT
+                            && child_node_rating_abs != INFINITY
                         {
                             child_node_rating += match self.layer_number {
                                 1 => -(2 * moves_number), // The more moves the opponent has, the worse
