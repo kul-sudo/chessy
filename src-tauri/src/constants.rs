@@ -1,4 +1,4 @@
-pub static TREE_HEIGHT: i16 = 4; // It has to be either equal to or greater than 3
+pub static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
 pub static MAX_LEGAL_MOVES: i16 = 100;
 
 /// How many moves an opening is supposed to take.

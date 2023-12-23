@@ -38,7 +38,7 @@ async fn get_move(current_fen: String) -> String {
         layer_number: 0,
         previous_move: None,
         previous_weight: weight_by_fen, // !!! In the root, previous_weight is equal to the weight of the root
-        previous_current_rating: -INFINITY,
+        previous_current_rating: INFINITY,
     })
     .get_node_rating_or_move()
     {
