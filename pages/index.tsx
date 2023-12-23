@@ -11,6 +11,7 @@ import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
 
 const SHOW_CHESSBOARD = true
 const WRITE_TO_FILE = false
+const BOT_VS_BOT = false
 
 let gameHistory: string[] = []
 
@@ -210,19 +211,20 @@ const ChessboardPage: NextPage = () => {
   const game_turn = game.turn()
 
   useEffect(() => {
-    if (game.turn() === 'b') {
+    if (!BOT_VS_BOT && game.turn() === 'b') {
       makeBotMove()
     }
   }, [game, game_turn, makeBotMove])
 
-  // useEffect(() => {
-  //   if (WRITE_TO_FILE) {
-  //     gameHistory.push(game.fen())
-  //   }
-  //   // if (run && !game.isGameOver()) {
-  //   //   makeBotMove()
-  //   // }
-  // }, [game_turn, game, run, makeBotMove])
+  useEffect(() => {
+    if (WRITE_TO_FILE) {
+      gameHistory.push(game.fen())
+    }
+
+    if (BOT_VS_BOT && run && !game.isGameOver()) {
+      makeBotMove()
+    }
+  }, [game_turn, game, run, makeBotMove])
 
   return (
     <div
