@@ -4,14 +4,14 @@ import * as ChessJS from 'chess.js'
 import { useCallback, useEffect, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { Move } from 'chess.js'
-import { Box, Button, Loader } from '@mantine/core'
+import { Button, Loader } from '@mantine/core'
 import { invoke } from '@tauri-apps/api/tauri'
 import { writeFile } from '@tauri-apps/api/fs'
 import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
 
 const SHOW_CHESSBOARD = true
 const WRITE_TO_FILE = false
-const BOT_VS_BOT = false
+const BOT_VS_BOT = true
 
 let gameHistory: string[] = []
 
@@ -26,7 +26,7 @@ const ChessboardPage: NextPage = () => {
   const [moveSquares, setMoveSquares] = useState({})
   const [optionSquares, setOptionSquares] = useState({})
 
-  const [run, setRun] = useState<boolean>(true)
+  const [run, setRun] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
 
   const makeMove = useCallback(
@@ -201,6 +201,9 @@ const ChessboardPage: NextPage = () => {
           contents: JSON.stringify(gameHistory)
         })
       }
+
+      invoke('first_move')
+
       setTimeout(() => {
         gameHistory = []
         resetGame()

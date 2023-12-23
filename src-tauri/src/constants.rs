@@ -1,4 +1,8 @@
-pub static TREE_HEIGHT: i16 = 3; // It has to be either equal to or greater than 3
+static MAX_TIME_SECS: u128 = 3; // The time limit for handling one move of the bot in seconds
+pub static MAX_TIME: u128 = MAX_TIME_SECS * 1000000000; // In nanoseconds
+
+pub static MIN_TREE_HEIGHT: i16 = 4; // >= 3
+
 pub static MAX_LEGAL_MOVES: i16 = 100;
 
 /// How many moves an opening is supposed to take.

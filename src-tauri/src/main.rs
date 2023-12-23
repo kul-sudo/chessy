@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::num::NonZeroU32;
+use std::{num::NonZeroU32, time::Instant};
 
 mod constants;
 mod mut_static;
@@ -15,6 +15,11 @@ use utils::*;
 use node::Node;
 use shakmaty::{fen::Fen, CastlingMode, Chess, Position};
 
+#[tauri::command(async)]
+async fn first_move() {
+    unsafe { FIRST_MOVE = true }
+}
+
 #[tauri::command(async, rename_all = "snake_case")]
 /// Get the best move for the given FEN.
 async fn get_move(current_fen: String) -> String {
@@ -22,16 +27,26 @@ async fn get_move(current_fen: String) -> String {
     let fen: Fen = current_fen.parse().unwrap();
     let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
+    let tree_building_time: u128;
+
     let bot_color = chess.turn(); // The current turn/color the bot has to work with
 
     let weight_by_fen = get_weight_by_fen(fen.clone(), bot_color);
     let fullmoves = chess.fullmoves();
 
+    let first_move = unsafe { FIRST_MOVE };
+    println!("{:?}", first_move);
+
     unsafe {
         BOT_COLOR = bot_color;
         BOT_WANTS_STALEMATE = weight_by_fen <= -ROOK_WEIGHT;
-        OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap()
+        OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap();
+        if FIRST_MOVE {
+            FIRST_MOVE = false
+        }
     }
+
+    let now = Instant::now();
 
     if let RatingOrMove::Move(value) = (Node {
         fen,
@@ -42,6 +57,7 @@ async fn get_move(current_fen: String) -> String {
     })
     .get_node_rating_or_move()
     {
+        tree_building_time = now.elapsed().as_nanos();
         value.to_string()
     } else {
         unreachable!()
@@ -51,7 +67,7 @@ async fn get_move(current_fen: String) -> String {
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_move])
+        .invoke_handler(tauri::generate_handler![get_move, first_move])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

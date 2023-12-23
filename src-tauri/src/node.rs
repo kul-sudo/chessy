@@ -102,7 +102,7 @@ impl Node {
             }
         } // Finish handling the weight
 
-        if self.layer_number == TREE_HEIGHT {
+        if self.layer_number == unsafe { TREE_HEIGHT } {
             // If the top has been reached, it's time to return the current node weight,
             // otherwise create the successor for this node
             RatingOrMove::Rating(current_node_weight)
