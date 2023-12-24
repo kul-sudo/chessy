@@ -2,7 +2,7 @@ use shakmaty::Color;
 
 pub static mut FIRST_MOVE: bool = true;
 
-pub static mut TREE_HEIGHT: i16 = 4; // Has to be either equal to or greater than 3
+pub static mut TREE_HEIGHT: i16 = 0;
 
 pub static mut ONE_NODE_HANDLE_TIME: u128 = 0;
 

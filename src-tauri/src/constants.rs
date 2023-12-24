@@ -1,5 +1,12 @@
-static MAX_TIME_SECS: u128 = 3; // The time limit for handling one move of the bot in seconds
+static MAX_TIME_SECS: u128 = 6; // The time limit for handling one move of the bot in seconds
 pub static MAX_TIME: u128 = MAX_TIME_SECS * 1000000000; // In nanoseconds
+
+/// The value of the coefficient has been defined experimentally. It is required due to the
+/// imprecision of the tree height estimation
+pub static CORRECTIONAL_COEFFICIENT: f64 = 0.7;
+
+/// The limit for the height of the tree.
+pub static MAX_TREE_HEIGHT: i16 = 5;
 
 pub static MIN_TREE_HEIGHT: i16 = 4; // >= 3
 

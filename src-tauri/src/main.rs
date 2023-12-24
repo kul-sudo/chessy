@@ -33,9 +33,36 @@ async fn get_move(current_fen: String) -> String {
 
     let weight_by_fen = get_weight_by_fen(fen.clone(), bot_color);
     let fullmoves = chess.fullmoves();
+    let mut one_node_handle_time: u128;
 
+    // Start defining the height of the tree
     let first_move = unsafe { FIRST_MOVE };
-    println!("{:?}", first_move);
+    let first_moves_number = chess.legal_moves().len();
+    let tree_height = match first_move {
+        true => MIN_TREE_HEIGHT, // At the fist move, there's no assessment for ONE_NODE_HANDLE_TIME
+        false => {
+            if first_moves_number == 1 {
+                MAX_TREE_HEIGHT // It's better not to assess the height of the tree
+            } else {
+                one_node_handle_time = unsafe { ONE_NODE_HANDLE_TIME };
+
+                // Straightforward assessment of the tree height.
+                let mut tree_height_assessment = ((((MAX_TIME / one_node_handle_time) as f64)
+                    .log2())
+                    / (((first_moves_number as f64) * CORRECTIONAL_COEFFICIENT).log2()))
+                .floor() as i16;
+                println!("tree_height_assessment = {:?}", tree_height_assessment);
+
+                tree_height_assessment = tree_height_assessment.max(MIN_TREE_HEIGHT); // If the
+                                                                                      // assessment turns out to be too low
+                tree_height_assessment.min(MAX_TREE_HEIGHT) // If the assessment turns out to be
+                                                            // too high
+            }
+        }
+    };
+
+    unsafe { TREE_HEIGHT = tree_height }
+    // Finished defining the height of the tree
 
     unsafe {
         BOT_COLOR = bot_color;
@@ -47,6 +74,7 @@ async fn get_move(current_fen: String) -> String {
     }
 
     let now = Instant::now();
+    let move_to_return;
 
     if let RatingOrMove::Move(value) = (Node {
         fen,
@@ -58,10 +86,22 @@ async fn get_move(current_fen: String) -> String {
     .get_node_rating_or_move()
     {
         tree_building_time = now.elapsed().as_nanos();
-        value.to_string()
+        move_to_return = value.to_string()
     } else {
         unreachable!()
     }
+
+    // Start assessing ONE_NODE_HANDLE_TIME
+    one_node_handle_time = ((tree_building_time as f64)
+        / ((first_moves_number as f64).powf(tree_height as f64)))
+        as u128;
+    unsafe { ONE_NODE_HANDLE_TIME = one_node_handle_time }
+    // Finish assessing ONE_NODE_HANDLE_TIME
+
+    println!("tree_height = {:?}", tree_height);
+    println!("tree_building_time = {:?}", tree_building_time / 100000000);
+    println!("----------------------------------------------------------");
+    move_to_return
 }
 
 #[tokio::main]
