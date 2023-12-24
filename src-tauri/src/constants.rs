@@ -1,15 +1,16 @@
-static MAX_TIME_SECS: u128 = 6; // The time limit for handling one move of the bot in seconds
-pub static MAX_TIME: u128 = MAX_TIME_SECS * 1000000000; // In nanoseconds
+static NANOSECOND: u128 = 1000000000;
 
-/// The value of the coefficient has been defined experimentally. It is required due to the
-/// imprecision of the tree height estimation
-pub static CORRECTIONAL_COEFFICIENT: f64 = 0.7;
+static MAX_TIME_SECS: u128 = 3; // The time limit for handling one move of the bot in seconds
+pub static TIME_TO_THINK: u128 = MAX_TIME_SECS * NANOSECOND; // In nanoseconds
+
+pub static TIME_COMPARISON_PRECISION: u128 = 2 * NANOSECOND;
 
 /// The limit for the height of the tree.
-pub static MAX_TREE_HEIGHT: i16 = 5;
+pub static MAX_TREE_HEIGHT: i16 = 8;
 
-pub static MIN_TREE_HEIGHT: i16 = 4; // >= 3
+pub static MIN_TREE_HEIGHT: i16 = 3; // >= 3
 
+/// How many legal moves there can approximately be.
 pub static MAX_LEGAL_MOVES: i16 = 100;
 
 /// How many moves an opening is supposed to take.

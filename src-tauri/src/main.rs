@@ -10,6 +10,7 @@ mod utils;
 
 use constants::*;
 use mut_static::*;
+use tauri::{AppHandle, Manager};
 use utils::*;
 
 use node::Node;
@@ -22,7 +23,7 @@ async fn first_move() {
 
 #[tauri::command(async, rename_all = "snake_case")]
 /// Get the best move for the given FEN.
-async fn get_move(current_fen: String) -> String {
+async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     // Create an instance of Chess with the current FEN
     let fen: Fen = current_fen.parse().unwrap();
     let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
@@ -33,33 +34,27 @@ async fn get_move(current_fen: String) -> String {
 
     let weight_by_fen = get_weight_by_fen(fen.clone(), bot_color);
     let fullmoves = chess.fullmoves();
-    let mut one_node_handle_time: u128;
 
     // Start defining the height of the tree
     let first_move = unsafe { FIRST_MOVE };
-    let first_moves_number = chess.legal_moves().len();
-    let tree_height = match first_move {
-        true => MIN_TREE_HEIGHT, // At the fist move, there's no assessment for ONE_NODE_HANDLE_TIME
+    let mut tree_height = unsafe { TREE_HEIGHT };
+
+    match first_move {
+        true => tree_height = MIN_TREE_HEIGHT,
         false => {
-            if first_moves_number == 1 {
-                MAX_TREE_HEIGHT // It's better not to assess the height of the tree
-            } else {
-                one_node_handle_time = unsafe { ONE_NODE_HANDLE_TIME };
-
-                // Straightforward assessment of the tree height.
-                let mut tree_height_assessment = ((((MAX_TIME / one_node_handle_time) as f64)
-                    .log2())
-                    / (((first_moves_number as f64) * CORRECTIONAL_COEFFICIENT).log2()))
-                .floor() as i16;
-                println!("tree_height_assessment = {:?}", tree_height_assessment);
-
-                tree_height_assessment = tree_height_assessment.max(MIN_TREE_HEIGHT); // If the
-                                                                                      // assessment turns out to be too low
-                tree_height_assessment.min(MAX_TREE_HEIGHT) // If the assessment turns out to be
-                                                            // too high
+            let time_delta: i128 =
+                unsafe { (TIME_TO_THINK as i128) - (LAST_TREE_BUILDING_TIME as i128) };
+            if time_delta > (TIME_COMPARISON_PRECISION as i128) {
+                if tree_height < MAX_TREE_HEIGHT {
+                    tree_height += 1
+                }
+            } else if time_delta < -(TIME_COMPARISON_PRECISION as i128) {
+                tree_height -= 1
             }
         }
     };
+
+    let _ = app_handle.emit_all("log", tree_height.to_string());
 
     unsafe { TREE_HEIGHT = tree_height }
     // Finished defining the height of the tree
@@ -91,16 +86,8 @@ async fn get_move(current_fen: String) -> String {
         unreachable!()
     }
 
-    // Start assessing ONE_NODE_HANDLE_TIME
-    one_node_handle_time = ((tree_building_time as f64)
-        / ((first_moves_number as f64).powf(tree_height as f64)))
-        as u128;
-    unsafe { ONE_NODE_HANDLE_TIME = one_node_handle_time }
-    // Finish assessing ONE_NODE_HANDLE_TIME
+    unsafe { LAST_TREE_BUILDING_TIME = tree_building_time }
 
-    println!("tree_height = {:?}", tree_height);
-    println!("tree_building_time = {:?}", tree_building_time / 100000000);
-    println!("----------------------------------------------------------");
     move_to_return
 }
 

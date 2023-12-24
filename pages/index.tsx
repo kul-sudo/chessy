@@ -1,13 +1,14 @@
 import type { NextPage } from 'next'
 import type { Square } from 'chess.js'
+import type { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
 import * as ChessJS from 'chess.js'
 import { useCallback, useEffect, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { Move } from 'chess.js'
-import { Button, Loader } from '@mantine/core'
+import { Button, Loader, Text } from '@mantine/core'
 import { invoke } from '@tauri-apps/api/tauri'
 import { writeFile } from '@tauri-apps/api/fs'
-import { PromotionPieceOption } from 'react-chessboard/dist/chessboard/types'
+import { listen } from '@tauri-apps/api/event'
 
 const SHOW_CHESSBOARD = true
 const WRITE_TO_FILE = false
@@ -25,6 +26,7 @@ const ChessboardPage: NextPage = () => {
   const [rightClickedSquares, setRightClickedSquares] = useState({})
   const [moveSquares, setMoveSquares] = useState({})
   const [optionSquares, setOptionSquares] = useState({})
+  const [treeHeight, setTreeHeight] = useState('')
 
   const [run, setRun] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -37,6 +39,18 @@ const ChessboardPage: NextPage = () => {
     },
     [game]
   )
+
+  const memorisedSetReadDirArray = useCallback(() => {
+    const unlisten = listen('log', event => {
+      setTreeHeight(event.payload as string)
+    })
+
+    return () => {
+      unlisten.then(remove => remove())
+    }
+  }, [])
+
+  useEffect(memorisedSetReadDirArray, [memorisedSetReadDirArray])
 
   const makeBotMove = useCallback(() => {
     invoke('get_move', {
@@ -281,6 +295,8 @@ const ChessboardPage: NextPage = () => {
       >
         {run ? 'Stop' : 'Run'}
       </Button>
+
+      <Text c="#fff">tree_height = {treeHeight}</Text>
 
       {isLoading && <Loader />}
     </div>

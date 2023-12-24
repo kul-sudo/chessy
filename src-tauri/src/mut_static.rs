@@ -2,9 +2,9 @@ use shakmaty::Color;
 
 pub static mut FIRST_MOVE: bool = true;
 
-pub static mut TREE_HEIGHT: i16 = 0;
+pub static mut TREE_HEIGHT: i16 = 4;
 
-pub static mut ONE_NODE_HANDLE_TIME: u128 = 0;
+pub static mut LAST_TREE_BUILDING_TIME: u128 = 0;
 
 /// The color the bot is playing on.
 pub static mut BOT_COLOR: Color = Color::White;

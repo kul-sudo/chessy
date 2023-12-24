@@ -157,15 +157,9 @@ impl Node {
                         // Make a hashmap of { move: rating }
                         move_ratings.insert(legal_move, child_node_rating);
                     } else {
-                        // Find the maximum or minimum rating depending on the turn
-                        let child_node_rating_abs = child_node_rating.abs();
-
                         // If there's no checkmate or stalemate, the rating is corrected according
                         // to the number of moves of the bot and the opponent
-                        if child_node_rating_abs != CHECKMATE_WEIGHT
-                            && child_node_rating_abs != STALEMATE_WEIGHT
-                            && child_node_rating_abs != INFINITY
-                        {
+                        if child_node_rating.abs() < STALEMATE_WEIGHT {
                             child_node_rating += match self.layer_number {
                                 1 => -(2 * moves_number), // The more moves the opponent has, the worse
                                 2 => {
