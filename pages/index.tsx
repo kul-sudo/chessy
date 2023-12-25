@@ -11,7 +11,7 @@ import { writeFile } from '@tauri-apps/api/fs'
 import { listen } from '@tauri-apps/api/event'
 
 const SHOW_CHESSBOARD = true
-const WRITE_TO_FILE = false
+const WRITE_TO_FILE = true
 const BOT_VS_BOT = true
 
 let gameHistory: string[] = []
@@ -212,7 +212,7 @@ const ChessboardPage: NextPage = () => {
     if (game.isGameOver()) {
       if (WRITE_TO_FILE) {
         writeFile({
-          path: '/home/user/Documents/chessy/data/game.json',
+          path: 'C:\\Users\\User\\Documents\\chessy\\data\\game.json',
           contents: JSON.stringify(gameHistory)
         })
       }

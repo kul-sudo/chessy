@@ -35,10 +35,13 @@ impl Node {
             .into_position(CastlingMode::Standard)
             .unwrap();
 
-        let bot_color = unsafe { BOT_COLOR };
-        let bot_wants_stalemate = unsafe { BOT_WANTS_STALEMATE };
+        let bot_turn = chess.turn() == unsafe { BOT_COLOR };
 
-        let bot_turn = chess.turn() == bot_color;
+        unsafe {
+            if FIRST_MOVE {
+                NODES_NUMBER += 1
+            }
+        }
 
         if self.layer_number > 0 {
             // JS isn't supposed to call Rust if there's a checkmate or stalemate
@@ -56,7 +59,7 @@ impl Node {
             if chess.is_stalemate() {
                 // Return the worst or best weight depending on whether the bot wants a stalemate;
                 // however, a checkmate has a higher weight than a stalemate
-                return RatingOrMove::Rating(if bot_wants_stalemate {
+                return RatingOrMove::Rating(if unsafe { BOT_WANTS_STALEMATE } {
                     STALEMATE_WEIGHT
                 } else {
                     -STALEMATE_WEIGHT
@@ -82,7 +85,7 @@ impl Node {
             let is_promotion = previous_move.is_promotion();
 
             if is_capture || is_promotion {
-                // If there has either been a capture or promotion, an
+                // IfC:\Users\User\scoop\shims\pwsh.exe there has either been a capture or promotion, an
                 // adjustment is done
 
                 let coefficient = if bot_turn { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
@@ -226,3 +229,4 @@ impl Node {
         }
     }
 }
+

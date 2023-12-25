@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{num::NonZeroU32, time::Instant};
+use std::{cmp::Ordering, num::NonZeroU32, time::Instant};
 
 mod constants;
 mod mut_static;
@@ -37,35 +37,47 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
 
     // Start defining the height of the tree
     let first_move = unsafe { FIRST_MOVE };
-    let mut tree_height = unsafe { TREE_HEIGHT };
+    let tree_height;
 
     match first_move {
-        true => tree_height = MIN_TREE_HEIGHT,
+        true => {
+            tree_height = MIN_TREE_HEIGHT;
+            unsafe { NODES_NUMBER = 0 }
+        }
         false => {
-            let time_delta: i128 =
-                unsafe { (TIME_TO_THINK as i128) - (LAST_TREE_BUILDING_TIME as i128) };
-            if time_delta > (TIME_COMPARISON_PRECISION as i128) {
-                if tree_height < MAX_TREE_HEIGHT {
-                    tree_height += 1
+            if unsafe { BRANCHING_RATE > 1.0 } {
+                let mut height_estimation = ((TIME_TO_THINK as f64)
+                    / unsafe { ONE_NODE_HANDLE_TIME })
+                .log(unsafe { BRANCHING_RATE });
+
+                height_estimation = height_estimation.max(MIN_TREE_HEIGHT as f64); // If the
+                                                                                   // estimation value is too low
+                let height_estimation_int =
+                    (height_estimation.min(MAX_TREE_HEIGHT as f64)).floor() as i16; // If the estimation value is too high
+
+                let current_tree_height = unsafe { TREE_HEIGHT };
+
+                tree_height = match height_estimation_int.cmp(&current_tree_height) {
+                    Ordering::Greater => (current_tree_height + 1).min(MAX_TREE_HEIGHT),
+                    Ordering::Less => (current_tree_height - 1).max(MIN_TREE_HEIGHT),
+                    Ordering::Equal => current_tree_height,
                 }
-            } else if time_delta < -(TIME_COMPARISON_PRECISION as i128) {
-                tree_height -= 1
+            } else {
+                tree_height = MIN_TREE_HEIGHT
             }
         }
     };
+    // Finished defining the height of the tree
+
+    // println!("tree_height = {:?}", tree_height);
 
     let _ = app_handle.emit_all("log", tree_height.to_string());
 
-    unsafe { TREE_HEIGHT = tree_height }
-    // Finished defining the height of the tree
-
     unsafe {
+        TREE_HEIGHT = tree_height;
         BOT_COLOR = bot_color;
         BOT_WANTS_STALEMATE = weight_by_fen <= -ROOK_WEIGHT;
         OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap();
-        if FIRST_MOVE {
-            FIRST_MOVE = false
-        }
     }
 
     let now = Instant::now();
@@ -81,13 +93,27 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     .get_node_rating_or_move()
     {
         tree_building_time = now.elapsed().as_nanos();
-        move_to_return = value.to_string()
+        move_to_return = value.to_string();
+
+        if first_move {
+            let one_node_handle_time_value =
+                (tree_building_time as f64) / (unsafe { NODES_NUMBER } as f64);
+            unsafe {
+                ONE_NODE_HANDLE_TIME = one_node_handle_time_value;
+                FIRST_MOVE = false
+            }
+        }
+
+        let branching_rate_value = ((tree_building_time as f64) / unsafe { ONE_NODE_HANDLE_TIME })
+            .powf(1.0 / (tree_height as f64));
+        unsafe { BRANCHING_RATE = branching_rate_value }
     } else {
         unreachable!()
     }
 
-    unsafe { LAST_TREE_BUILDING_TIME = tree_building_time }
-
+    // println!("tree_building_time = {:?}", tree_building_time / 100000000);
+    //
+    // println!("{:?}", "-".repeat(20));
     move_to_return
 }
 
@@ -98,3 +124,4 @@ async fn main() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
