@@ -41,8 +41,8 @@ const ChessboardPage: NextPage = () => {
   )
 
   const memorisedSetReadDirArray = useCallback(() => {
-    const unlisten = listen('log', event => {
-      setTreeHeight(event.payload as string)
+    const unlisten = listen<string>('log', event => {
+      setTreeHeight(event.payload)
     })
 
     return () => {
@@ -53,10 +53,10 @@ const ChessboardPage: NextPage = () => {
   useEffect(memorisedSetReadDirArray, [memorisedSetReadDirArray])
 
   const makeBotMove = useCallback(() => {
-    invoke('get_move', {
+    invoke<Move>('get_move', {
       current_fen: game.fen()
     }).then(move => {
-      makeMove(move as Move)
+      makeMove(move)
       setIsLoading(false)
     })
   }, [game, makeMove])
