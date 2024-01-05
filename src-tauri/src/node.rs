@@ -165,14 +165,10 @@ impl Node {
                         if child_node_rating.abs() < STALEMATE_WEIGHT {
                             child_node_rating += match self.layer_number {
                                 1 => -(2 * moves_number), // The more moves the opponent has, the worse
-                                2 => {
+                                2 if opening_is_going => {
                                     // Needed during the opening for the bot to develop its pieces;
                                     // however, after the end of the opening, it may cause endless repetitive moves
-                                    if opening_is_going {
-                                        moves_number
-                                    } else {
-                                        0
-                                    }
+                                    moves_number
                                 } // The more moves the bot has, the better
                                 _ => 0,
                             }
@@ -229,4 +225,3 @@ impl Node {
         }
     }
 }
-
