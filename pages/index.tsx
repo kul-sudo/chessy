@@ -38,10 +38,10 @@ const ChessboardPage: NextPage = () => {
     [game]
   )
   const makeBotMove = useCallback(() => {
-    invoke('get_move', {
+    invoke<Move>('get_move', {
       current_fen: game.fen()
     }).then(move => {
-      makeMove(move as Move)
+      makeMove(move)
       setIsLoading(false)
     })
   }, [game, makeMove])
