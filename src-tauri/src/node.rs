@@ -85,8 +85,7 @@ impl Node {
             let is_promotion = previous_move.is_promotion();
 
             if is_capture || is_promotion {
-                // IfC:\Users\User\scoop\shims\pwsh.exe there has either been a capture or promotion, an
-                // adjustment is done
+                // If there has either been a capture or promotion, an adjustment is done
 
                 let coefficient = if bot_turn { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
 
