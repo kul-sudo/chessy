@@ -60,6 +60,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         }
     };
     // Finished defining the height of the tree
+    unsafe { STALEMATE_WEIGHT = CHECKMATE_WEIGHT - 1 - TREE_HEIGHT }
 
     let _ = app_handle.emit_all("log", tree_height.to_string());
 
@@ -76,8 +77,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     if let RatingOrMove::Move(value) = (Node {
         fen,
         layer_number: 0,
-        previous_move: None,
-        previous_weight: weight_by_fen, // !!! In the root, previous_weight is equal to the weight of the root
+        weight: weight_by_fen,
         previous_current_rating: INFINITY,
     })
     .get_node_rating_or_move()

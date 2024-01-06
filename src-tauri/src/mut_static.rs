@@ -17,3 +17,5 @@ pub static mut BOT_WANTS_STALEMATE: bool = false;
 
 /// Whether the opening part of the game is still going.
 pub static mut OPENING_IS_GOING: bool = false;
+
+pub static mut STALEMATE_WEIGHT: i16 = 0;
