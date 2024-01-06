@@ -28,6 +28,7 @@ impl Node {
     /// Get the rating of the current node (the final weight when both the bot and the opponent play in the best way possible);
     /// this weight may be adjusted according to the number of the legal moves that can me made by either the bot or the opponent.
     pub fn get_node_rating_or_move(self) -> RatingOrMove {
+        let thread_rng_ = &mut thread_rng();
         // Create an instance of Chess with the current FEN
         let chess: Chess = self
             .fen
@@ -114,7 +115,7 @@ impl Node {
             let mut rating_to_return = if bot_turn { -INFINITY } else { INFINITY };
 
             let mut legal_moves_to_shuffle = legal_moves.clone();
-            legal_moves_to_shuffle.shuffle(&mut thread_rng());
+            legal_moves_to_shuffle.shuffle(thread_rng_);
 
             for legal_move in legal_moves_to_shuffle {
                 let pos_after_move = chess.clone().play(&legal_move).unwrap();
