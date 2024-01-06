@@ -16,11 +16,6 @@ use utils::*;
 use node::Node;
 use shakmaty::{fen::Fen, CastlingMode, Chess, Position};
 
-#[tauri::command(async)]
-async fn first_move() {
-    unsafe { FIRST_MOVE = true }
-}
-
 #[tauri::command(async, rename_all = "snake_case")]
 /// Get the best move for the given FEN.
 async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
@@ -36,40 +31,35 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     let fullmoves = chess.fullmoves();
 
     // Start defining the height of the tree
-    let first_move = unsafe { FIRST_MOVE };
+    let one_node_handle_time_estimated = unsafe { ONE_NODE_HANDLE_TIME } != -1.0;
     let tree_height;
 
-    match first_move {
+    match one_node_handle_time_estimated {
         true => {
-            tree_height = MIN_TREE_HEIGHT;
-            unsafe { NODES_NUMBER = 0 }
-        }
-        false => {
-            if unsafe { BRANCHING_RATE > 1.0 } {
-                let mut height_estimation = ((TIME_TO_THINK as f64)
-                    / unsafe { ONE_NODE_HANDLE_TIME })
-                .log(unsafe { BRANCHING_RATE });
+            let branching_rate = unsafe { BRANCHING_RATE };
+            if branching_rate > 1.0 {
+                let mut height_estimation =
+                    ((TIME_TO_THINK as f64) / unsafe { ONE_NODE_HANDLE_TIME }).log(branching_rate);
 
                 height_estimation = height_estimation.max(MIN_TREE_HEIGHT as f64); // If the
                                                                                    // estimation value is too low
-                let height_estimation_int =
-                    (height_estimation.min(MAX_TREE_HEIGHT as f64)).floor() as i16; // If the estimation value is too high
-
                 let current_tree_height = unsafe { TREE_HEIGHT };
 
-                tree_height = match height_estimation_int.cmp(&current_tree_height) {
-                    Ordering::Greater => (current_tree_height + 1).min(MAX_TREE_HEIGHT),
-                    Ordering::Less => (current_tree_height - 1).max(MIN_TREE_HEIGHT),
+                tree_height = match (height_estimation as i16).cmp(&current_tree_height) {
+                    Ordering::Greater => current_tree_height + 1,
+                    Ordering::Less => current_tree_height - 1,
                     Ordering::Equal => current_tree_height,
                 }
             } else {
                 tree_height = MIN_TREE_HEIGHT
             }
         }
+        false => {
+            tree_height = MIN_TREE_HEIGHT;
+            unsafe { NODES_NUMBER = 0 }
+        }
     };
     // Finished defining the height of the tree
-
-    // println!("tree_height = {:?}", tree_height);
 
     let _ = app_handle.emit_all("log", tree_height.to_string());
 
@@ -95,13 +85,11 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         tree_building_time = now.elapsed().as_nanos();
         move_to_return = value.to_string();
 
-        if first_move {
+        // If one node handle time hasn't been estimated, we have to do it
+        if !one_node_handle_time_estimated {
             let one_node_handle_time_value =
                 (tree_building_time as f64) / (unsafe { NODES_NUMBER } as f64);
-            unsafe {
-                ONE_NODE_HANDLE_TIME = one_node_handle_time_value;
-                FIRST_MOVE = false
-            }
+            unsafe { ONE_NODE_HANDLE_TIME = one_node_handle_time_value }
         }
 
         let branching_rate_value = ((tree_building_time as f64) / unsafe { ONE_NODE_HANDLE_TIME })
@@ -111,17 +99,13 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         unreachable!()
     }
 
-    // println!("tree_building_time = {:?}", tree_building_time / 100000000);
-    //
-    // println!("{:?}", "-".repeat(20));
     move_to_return
 }
 
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_move, first_move])
+        .invoke_handler(tauri::generate_handler![get_move])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

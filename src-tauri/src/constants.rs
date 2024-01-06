@@ -1,10 +1,7 @@
 static NANOSECOND: u128 = 1000000000;
 
-static MAX_TIME_SECS: u128 = 3; // The time limit for handling one move of the bot in seconds
+static MAX_TIME_SECS: u128 = 5; // The time limit for handling one move of the bot in seconds
 pub static TIME_TO_THINK: u128 = MAX_TIME_SECS * NANOSECOND; // In nanoseconds
-
-/// The limit for the height of the tree.
-pub static MAX_TREE_HEIGHT: i16 = 9;
 
 pub static MIN_TREE_HEIGHT: i16 = 4; // >= 3
 
@@ -24,4 +21,3 @@ pub static ROOK_WEIGHT: i16 = 5 * PAWN_WEIGHT;
 pub static INFINITY: i16 = i16::MAX;
 pub static CHECKMATE_WEIGHT: i16 = INFINITY - 1;
 pub static STALEMATE_WEIGHT: i16 = CHECKMATE_WEIGHT - 1;
-

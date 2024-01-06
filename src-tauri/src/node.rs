@@ -39,7 +39,8 @@ impl Node {
         let bot_turn = chess.turn() == unsafe { BOT_COLOR };
 
         unsafe {
-            if FIRST_MOVE {
+            if ONE_NODE_HANDLE_TIME == -1.0 {
+                // println!("NODES_NUMBER = {:?}", NODES_NUMBER);
                 NODES_NUMBER += 1
             }
         }
@@ -82,26 +83,21 @@ impl Node {
 
         if self.layer_number > 0 {
             let previous_move = self.previous_move.as_ref().unwrap();
-            let is_capture = previous_move.is_capture();
-            let is_promotion = previous_move.is_promotion();
 
-            if is_capture || is_promotion {
-                // If there has either been a capture or promotion, an adjustment is done
+            // If there has either been a capture or promotion, an adjustment is done
+            let coefficient = if bot_turn { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
 
-                let coefficient = if bot_turn { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
+            if previous_move.is_capture() {
+                // Adjust the weight as a result of the captured piece
+                current_node_weight +=
+                    self.get_piece_weight(previous_move.capture().unwrap()) * coefficient
+            }
 
-                if is_capture {
-                    // Adjust the weight as a result of the captured piece
-                    current_node_weight +=
-                        self.get_piece_weight(previous_move.capture().unwrap()) * coefficient
-                }
-
-                if is_promotion {
-                    // Adjust the weight as a result of the promoted pawn
-                    current_node_weight +=
-                        (self.get_piece_weight(previous_move.promotion().unwrap()) - PAWN_WEIGHT)
-                            * coefficient;
-                }
+            if previous_move.is_promotion() {
+                // Adjust the weight as a result of the promoted pawn
+                current_node_weight += (self.get_piece_weight(previous_move.promotion().unwrap())
+                    - PAWN_WEIGHT)
+                    * coefficient;
             }
         } // Finish handling the weight
 
@@ -187,26 +183,11 @@ impl Node {
 
             // The final return phase
             if self.layer_number == 0 {
-                // Retain the moves with the best final rating
-                let max_rating_move = &move_ratings.iter().max_by_key(|entry| entry.1).unwrap().1;
-
                 // Keep the elements with the best rating
-                let mut filtered_move_ratings: HashMap<&Move, &i16> = HashMap::new();
+                let max_rating = move_ratings.values().max().cloned();
+                move_ratings.retain(|_, v| *v == max_rating.unwrap());
 
-                for move_rating in &move_ratings {
-                    if &move_rating.1 == max_rating_move {
-                        filtered_move_ratings.insert(move_rating.0, move_rating.1);
-                    }
-                }
-
-                RatingOrMove::Move(
-                    filtered_move_ratings
-                        .keys()
-                        .copied()
-                        .next()
-                        .unwrap()
-                        .clone(),
-                )
+                RatingOrMove::Move(move_ratings.keys().next().unwrap().clone())
             } else {
                 RatingOrMove::Rating(rating_to_return)
             }
