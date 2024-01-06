@@ -12,8 +12,7 @@ pub static MAX_LEGAL_MOVES: i16 = 100;
 pub static MAX_OPENING_MOVES: u32 = 20;
 
 // Piece weights
-// pub static PAWN_WEIGHT: i16 = 3 * MAX_LEGAL_MOVES + 1; // 1 * (3 * MAX_LEGAL_MOVES + 1)
-pub static PAWN_WEIGHT: i16 = 300; // 1 * (3 * MAX_LEGAL_MOVES + 1)
+pub static PAWN_WEIGHT: i16 = 3 * MAX_LEGAL_MOVES + 1; // 1 * (3 * MAX_LEGAL_MOVES + 1)
 pub static KNIGHT_WEIGHT: i16 = 3 * PAWN_WEIGHT;
 pub static BISHOP_WEIGHT: i16 = 3 * PAWN_WEIGHT;
 pub static QUEEN_WEIGHT: i16 = 9 * PAWN_WEIGHT;
