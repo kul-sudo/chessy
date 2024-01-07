@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rand::{seq::SliceRandom, thread_rng};
-use shakmaty::{fen::Fen, san::San, CastlingMode, Chess, EnPassantMode, Position, Role};
+use shakmaty::{fen::Fen, CastlingMode, Chess, EnPassantMode, Position, Role};
 
 use crate::{constants::*, mut_static::*, utils::RatingOrMove};
 
@@ -25,7 +25,6 @@ impl Node {
     /// Get the rating of the current node (the final weight when both the bot and the opponent play in the best way possible);
     /// this weight may be adjusted according to the number of the legal moves that can me made by either the bot or the opponent.
     pub fn get_node_rating_or_move(self) -> RatingOrMove {
-        let thread_rng_ = &mut thread_rng();
         let stalemate_weight = unsafe { STALEMATE_WEIGHT };
 
         // Create an instance of Chess with the current FEN
@@ -90,12 +89,13 @@ impl Node {
             let mut rating_to_return = if bot_turn { -INFINITY } else { INFINITY };
 
             let mut legal_moves_shuffled = legal_moves;
-            legal_moves_shuffled.shuffle(thread_rng_);
+            legal_moves_shuffled.shuffle(&mut thread_rng());
 
             let coefficient = if bot_turn { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
 
             for legal_move in legal_moves_shuffled {
-                let pos_after_move = chess.clone().play(&legal_move).unwrap();
+                let mut temp_chess = chess.clone();
+                temp_chess.play_unchecked(&legal_move);
 
                 // Start handling the weight of the child node
                 let mut child_node_weight = self.weight;
@@ -117,7 +117,7 @@ impl Node {
 
                 // Handle the child node rating
                 if let RatingOrMove::Rating(mut child_node_rating) = (Node {
-                    fen: Fen::from_position(pos_after_move, EnPassantMode::Legal),
+                    fen: Fen::from_position(temp_chess, EnPassantMode::Legal),
                     layer_number: self.layer_number + 1,
                     weight: child_node_weight,
                     previous_current_rating: current_rating,
@@ -183,12 +183,12 @@ impl Node {
             if self.layer_number == 0 {
                 // Keep the elements with the best rating
                 let max_rating = move_ratings.values().max().cloned().unwrap();
-                let mut tmp = HashMap::new();
-                for entry in move_ratings.clone().into_iter() {
-                    tmp.insert(San::from_move(&chess, &entry.0).to_string(), entry.1);
-                }
-                println!("{:?}", tmp);
-                println!("{:}", "-".repeat(10));
+                // let mut tmp = HashMap::new();
+                // for entry in move_ratings.clone().into_iter() {
+                //     tmp.insert(San::from_move(&chess, &entry.0).to_string(), entry.1);
+                // }
+                // println!("{:?}", tmp);
+                // println!("{:}", "-".repeat(10));
                 move_ratings.retain(|_, v| *v == max_rating);
 
                 RatingOrMove::Move(move_ratings.keys().next().unwrap().clone())
