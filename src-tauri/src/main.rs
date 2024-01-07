@@ -60,8 +60,6 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         }
     };
     // Finished defining the height of the tree
-    unsafe { STALEMATE_WEIGHT = CHECKMATE_WEIGHT - 1 - TREE_HEIGHT }
-
     let _ = app_handle.emit_all("log", tree_height.to_string());
 
     unsafe {
@@ -69,6 +67,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         BOT_COLOR = bot_color;
         BOT_WANTS_STALEMATE = root_weight <= -ROOK_WEIGHT;
         OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap();
+        STALEMATE_WEIGHT = CHECKMATE_WEIGHT - 1 - TREE_HEIGHT
     }
 
     let now = Instant::now();

@@ -91,7 +91,7 @@ impl Node {
             let mut legal_moves_shuffled = legal_moves;
             legal_moves_shuffled.shuffle(&mut thread_rng());
 
-            let coefficient = if bot_turn { -1 } else { 1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
+            let coefficient = if bot_turn { 1 } else { -1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
 
             for legal_move in legal_moves_shuffled {
                 let mut temp_chess = chess.clone();
