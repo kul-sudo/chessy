@@ -20,7 +20,7 @@ use shakmaty::{fen::Fen, CastlingMode, Chess, Position};
 /// Get the best move for the given FEN.
 async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     // Create an instance of Chess with the current FEN
-    let fen: Fen = current_fen.parse().unwrap();
+    let fen = current_fen.parse::<Fen>().unwrap();
     let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
     let tree_building_time: u128;
