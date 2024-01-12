@@ -9,10 +9,13 @@ pub enum RatingOrMove {
 
 /// Calculate the weight for either black or white using the given FEN.
 pub fn get_weight_by_fen(fen: Fen, bot_color: Color) -> i16 {
-    let mut weight_for_white = i16::default();
-
-    for piece in fen.to_string().split_once(' ').unwrap().0.chars() {
-        weight_for_white += match piece {
+    let weight_for_white = fen
+        .to_string()
+        .split_once(' ')
+        .unwrap()
+        .0
+        .chars()
+        .map(|piece| match piece {
             'P' => PAWN_WEIGHT,
             'R' => ROOK_WEIGHT,
             'Q' => QUEEN_WEIGHT,
@@ -24,8 +27,8 @@ pub fn get_weight_by_fen(fen: Fen, bot_color: Color) -> i16 {
             'b' => -BISHOP_WEIGHT,
             'n' => -KNIGHT_WEIGHT,
             _ => 0,
-        }
-    }
+        })
+        .sum();
 
     if bot_color == Color::White {
         weight_for_white

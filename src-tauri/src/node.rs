@@ -183,12 +183,6 @@ impl Node {
             if self.layer_number == 0 {
                 // Keep the elements with the best rating
                 let max_rating = move_ratings.values().max().cloned().unwrap();
-                // let mut tmp = HashMap::new();
-                // for entry in move_ratings.clone().into_iter() {
-                //     tmp.insert(San::from_move(&chess, &entry.0).to_string(), entry.1);
-                // }
-                // println!("{:?}", tmp);
-                // println!("{:}", "-".repeat(10));
                 move_ratings.retain(|_, v| *v == max_rating);
 
                 RatingOrMove::Move(move_ratings.keys().next().unwrap().clone())

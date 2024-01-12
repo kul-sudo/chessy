@@ -34,31 +34,30 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     let one_node_handle_time_estimated = unsafe { ONE_NODE_HANDLE_TIME } != -1.0;
     let tree_height;
 
-    match one_node_handle_time_estimated {
-        true => {
-            let branching_rate = unsafe { BRANCHING_RATE };
-            if branching_rate > 1.0 {
-                let mut height_estimation =
-                    ((TIME_TO_THINK as f64) / unsafe { ONE_NODE_HANDLE_TIME }).log(branching_rate);
+    if one_node_handle_time_estimated {
+        let branching_rate = unsafe { BRANCHING_RATE };
+        if branching_rate > 1.0 {
+            let mut height_estimation =
+                ((TIME_TO_THINK as f64) / unsafe { ONE_NODE_HANDLE_TIME }).log(branching_rate);
 
-                height_estimation = height_estimation.max(MIN_TREE_HEIGHT as f64); // If the
-                                                                                   // estimation value is too low
-                let current_tree_height = unsafe { TREE_HEIGHT };
+            height_estimation = height_estimation.max(MIN_TREE_HEIGHT as f64); // If the
+                                                                               // estimation value is too low
+            let current_tree_height = unsafe { TREE_HEIGHT };
 
-                tree_height = match (height_estimation as i16).cmp(&current_tree_height) {
-                    Ordering::Greater => current_tree_height + 1,
-                    Ordering::Less => current_tree_height - 1,
-                    Ordering::Equal => current_tree_height,
+            tree_height = current_tree_height
+                + match (height_estimation as i16).cmp(&current_tree_height) {
+                    Ordering::Greater => 1,
+                    Ordering::Less => -1,
+                    _ => 0,
                 }
-            } else {
-                tree_height = MIN_TREE_HEIGHT
-            }
+        } else {
+            tree_height = MIN_TREE_HEIGHT
         }
-        false => {
-            tree_height = MIN_TREE_HEIGHT;
-            unsafe { NODES_NUMBER = 0 }
-        }
-    };
+    } else {
+        tree_height = MIN_TREE_HEIGHT;
+        unsafe { NODES_NUMBER = 0 }
+    }
+
     // Finished defining the height of the tree
     let _ = app_handle.emit_all("log", tree_height.to_string());
 
@@ -82,7 +81,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     .get_node_rating_or_move()
     {
         tree_building_time = now.elapsed().as_nanos();
-        move_to_return = value.to_string();
+        move_to_return = value;
 
         // If one node handle time hasn't been estimated, we have to do it
         if !one_node_handle_time_estimated {
@@ -98,7 +97,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         unreachable!()
     }
 
-    move_to_return
+    move_to_return.to_string()
 }
 
 #[tokio::main]
