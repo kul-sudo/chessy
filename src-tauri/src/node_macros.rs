@@ -34,7 +34,7 @@ macro_rules! correct_rating {
         if $child_node_rating.abs() < $stalemate_weight {
             $child_node_rating += match $layer_number {
                 1 => -(2 * $moves_number), // The more moves the opponent has, the worse
-                2 if $opening_is_going && unsafe { !FIRST_QUEEN_OR_KING_MOVE } => {
+                2 if $opening_is_going && !(unsafe { FIRST_QUEEN_OR_KING_MOVE }) => {
                     // Needed during the opening for the bot to develop its pieces;
                     // however, after the end of the opening, it may cause endless repetitive moves
                     $moves_number
@@ -61,7 +61,7 @@ macro_rules! optimise {
                     return RatingOrMove::Rating(-INFINITY);
                 }
             }
-            case if case > 1 => {
+            2.. => {
                 if $bot_turn {
                     if $current_rating >= $previous_current_rating {
                         return RatingOrMove::Rating(INFINITY);

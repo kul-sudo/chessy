@@ -12,7 +12,7 @@ import { listen } from '@tauri-apps/api/event'
 
 const SHOW_CHESSBOARD = true
 const WRITE_TO_FILE = true
-const BOT_VS_BOT = false
+const BOT_VS_BOT = true
 const BOT_COLOUR: ChessJS.Color = 'b'
 
 let gameHistory: string[] = []
@@ -20,7 +20,9 @@ let gameHistory: string[] = []
 const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 
 const ChessboardPage: NextPage = () => {
-  const [game, setGame] = useState(new Chess())
+  const [game, setGame] = useState(
+    new Chess('k7/r7/2q5/8/6R1/8/8/5K2 w - - 0 1')
+  )
   const [moveFrom, setMoveFrom] = useState<Square | ''>()
   const [moveTo, setMoveTo] = useState<Square | null>(null)
   const [showPromotionDialog, setShowPromotionDialog] = useState(false)

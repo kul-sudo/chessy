@@ -104,6 +104,16 @@ impl Node {
                 })
                 .get_node_rating_or_move()
                 {
+                    if child_node_rating.abs() == CHECKMATE_WEIGHT - (self.layer_number + 1) {
+                        // If a checkmate legal move has been found, there are obviously no
+                        // "better" moves
+                        return if layer_is_0 {
+                            RatingOrMove::Move(legal_move)
+                        } else {
+                            RatingOrMove::Rating(child_node_rating)
+                        };
+                    }
+
                     optimise!(
                         current_rating,
                         child_node_rating,
