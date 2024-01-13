@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use rand::{seq::SliceRandom, thread_rng};
 use shakmaty::{fen::Fen, CastlingMode, Chess, EnPassantMode, Position, Role};
 
-use crate::{constants::*, mut_static::*, utils::RatingOrMove};
+use crate::{
+    constants::*, correct_rating, get_piece_weight, handle_checkmate_or_stalemate, mut_static::*,
+    optimise, utils::RatingOrMove,
+};
 
 /// Node struct.
 pub struct Node {
@@ -11,14 +14,14 @@ pub struct Node {
     pub fen: Fen,
 
     /// The layer number the node is currently at.
-    pub layer_number: i16,
+    pub layer_number: i32,
 
     /// The weight of the current node.
-    pub weight: i16,
+    pub weight: i32,
 
-    /// The current value of `b.current_rating` which is the parent of `a`; the value of
-    /// `b.current_rating` at the moment when `a` was created. Used for optimisation.
-    pub previous_current_rating: i16,
+    /// The current value of `parent.current_rating`, which is the parent of the current node,
+    /// at the moment when the current node was created. Used for the optimisation.
+    pub previous_current_rating: i32,
 }
 
 impl Node {
@@ -36,38 +39,11 @@ impl Node {
 
         let bot_turn = chess.turn() == unsafe { BOT_COLOR };
 
-        unsafe {
-            if ONE_NODE_HANDLE_TIME == -1.0 {
-                // println!("NODES_NUMBER = {:?}", NODES_NUMBER);
-                NODES_NUMBER += 1
-            }
-        }
+        unsafe { NODES_NUMBER += 1 }
 
         if self.layer_number > 0 {
             // JS doesn't call Rust if there's a checkmate or stalemate
-
-            // Handle a possible checkmate
-            if chess.is_checkmate() {
-                let checkmate_weight_for_this_layer = CHECKMATE_WEIGHT - self.layer_number;
-                // Return the worst or best weight depending on who the checkmate has been performed by
-                return RatingOrMove::Rating(if bot_turn {
-                    -checkmate_weight_for_this_layer
-                } else {
-                    checkmate_weight_for_this_layer
-                });
-            }
-
-            // Handle a possible stalemate
-            if chess.is_stalemate() {
-                let stalemate_weight_for_this_layer = stalemate_weight - self.layer_number;
-                // Return the worst or best weight depending on whether the bot wants a stalemate;
-                // however, a checkmate has a higher weight than a stalemate
-                return RatingOrMove::Rating(if unsafe { BOT_WANTS_STALEMATE } {
-                    stalemate_weight_for_this_layer
-                } else {
-                    -stalemate_weight_for_this_layer
-                });
-            }
+            handle_checkmate_or_stalemate!(chess, bot_turn, stalemate_weight, self.layer_number);
         }
 
         // Handling all the other cases (everything all the way down)
@@ -75,7 +51,7 @@ impl Node {
                                                                               // optimisation
 
         let legal_moves = chess.legal_moves();
-        let moves_number = legal_moves.len() as i16;
+        let moves_number = legal_moves.len() as i32;
         let mut move_ratings = HashMap::with_capacity(moves_number as usize); // { move: rating of the move };
                                                                               // needed only for the root (layer number = 0)
 
@@ -104,12 +80,12 @@ impl Node {
                 if legal_move.is_capture() {
                     // Adjust the weight as a result of the captured piece
                     child_node_weight +=
-                        self.get_piece_weight(legal_move.capture().unwrap()) * coefficient
+                        get_piece_weight!(legal_move.capture().unwrap()) * coefficient
                 }
 
                 if legal_move.is_promotion() {
                     // Adjust the weight as a result of the promoted pawn
-                    child_node_weight += (self.get_piece_weight(legal_move.promotion().unwrap())
+                    child_node_weight += (get_piece_weight!(legal_move.promotion().unwrap())
                         - PAWN_WEIGHT)
                         * coefficient;
                 }
@@ -124,49 +100,25 @@ impl Node {
                 })
                 .get_node_rating_or_move()
                 {
-                    // Start the optimisation
-                    current_rating = if bot_turn {
-                        current_rating.max(child_node_rating)
-                    } else {
-                        current_rating.min(child_node_rating)
-                    };
-
-                    match self.layer_number {
-                        1 => {
-                            if current_rating < self.previous_current_rating {
-                                return RatingOrMove::Rating(-INFINITY);
-                            }
-                        }
-                        case if case > 1 => {
-                            if bot_turn {
-                                if current_rating >= self.previous_current_rating {
-                                    return RatingOrMove::Rating(INFINITY);
-                                }
-                            } else if current_rating <= self.previous_current_rating {
-                                return RatingOrMove::Rating(-INFINITY);
-                            }
-                        }
-                        _ => (),
-                    }
-                    // End the optimisation
+                    optimise!(
+                        current_rating,
+                        child_node_rating,
+                        bot_turn,
+                        self.previous_current_rating,
+                        self.layer_number
+                    );
 
                     if self.layer_number == 0 {
                         // Make a hashmap of { move: rating }
                         move_ratings.insert(legal_move, child_node_rating);
                     } else {
-                        // If there's no checkmate or stalemate, the rating is corrected according
-                        // to the number of moves of the bot and the opponent
-                        if child_node_rating.abs() < stalemate_weight {
-                            child_node_rating += match self.layer_number {
-                                1 => -(2 * moves_number), // The more moves the opponent has, the worse
-                                2 if opening_is_going => {
-                                    // Needed during the opening for the bot to develop its pieces;
-                                    // however, after the end of the opening, it may cause endless repetitive moves
-                                    moves_number
-                                } // The more moves the bot has, the better
-                                _ => 0,
-                            }
-                        } // Finish the correction
+                        correct_rating!(
+                            child_node_rating,
+                            stalemate_weight,
+                            opening_is_going,
+                            moves_number,
+                            self.layer_number
+                        );
 
                         rating_to_return = if bot_turn {
                             // Chosing the best move for the bot
@@ -189,18 +141,6 @@ impl Node {
             } else {
                 RatingOrMove::Rating(rating_to_return)
             }
-        }
-    }
-
-    /// Get the weight of a specific piece.
-    fn get_piece_weight(&self, piece: Role) -> i16 {
-        match piece {
-            Role::Pawn => PAWN_WEIGHT,
-            Role::Knight => KNIGHT_WEIGHT,
-            Role::Bishop => BISHOP_WEIGHT,
-            Role::Queen => QUEEN_WEIGHT,
-            Role::Rook => ROOK_WEIGHT,
-            _ => 0,
         }
     }
 }
