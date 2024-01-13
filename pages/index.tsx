@@ -213,7 +213,7 @@ const ChessboardPage: NextPage = () => {
     if (game.isGameOver()) {
       if (WRITE_TO_FILE) {
         writeFile({
-          path: 'C:\\Users\\User\\Documents\\chessy\\data\\game.json',
+          path: '/home/user/Documents/chessy/data/game.json',
           contents: JSON.stringify(gameHistory)
         })
       }

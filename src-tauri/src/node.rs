@@ -5,7 +5,7 @@ use shakmaty::{fen::Fen, CastlingMode, Chess, EnPassantMode, Position, Role};
 
 use crate::{
     constants::*, correct_rating, get_piece_weight, handle_checkmate_or_stalemate, mut_static::*,
-    optimise, utils::RatingOrMove,
+    optimise, queen_or_king_first_move_handle, utils::RatingOrMove,
 };
 
 /// Node struct.
@@ -73,6 +73,10 @@ impl Node {
                 let mut temp_chess = chess.clone();
                 temp_chess.play_unchecked(&legal_move);
 
+                let layer_is_0 = self.layer_number == 0;
+
+                queen_or_king_first_move_handle!(layer_is_0, legal_move);
+
                 // Start handling the weight of the child node
                 let mut child_node_weight = self.weight;
 
@@ -108,7 +112,7 @@ impl Node {
                         self.layer_number
                     );
 
-                    if self.layer_number == 0 {
+                    if layer_is_0 {
                         // Make a hashmap of { move: rating }
                         move_ratings.insert(legal_move, child_node_rating);
                     } else {

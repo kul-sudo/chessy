@@ -19,3 +19,5 @@ pub static mut BOT_WANTS_STALEMATE: bool = false;
 pub static mut OPENING_IS_GOING: bool = false;
 
 pub static mut STALEMATE_WEIGHT: i32 = 0;
+
+pub static mut FIRST_QUEEN_OR_KING_MOVE: bool = false;
