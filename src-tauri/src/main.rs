@@ -93,11 +93,13 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         tree_building_time = now.elapsed().as_nanos();
         move_to_return = value;
 
+        let tree_building_time_f64 = tree_building_time as f64;
+
         let one_node_handle_time_value =
-            (tree_building_time as f64) / (unsafe { NODES_NUMBER } as f64);
+            (tree_building_time_f64) / (unsafe { NODES_NUMBER } as f64);
         unsafe { ONE_NODE_HANDLE_TIME = one_node_handle_time_value }
 
-        let branching_rate_value = ((tree_building_time as f64) / unsafe { ONE_NODE_HANDLE_TIME })
+        let branching_rate_value = ((tree_building_time_f64) / unsafe { ONE_NODE_HANDLE_TIME })
             .powf(1.0 / (tree_height as f64));
         unsafe {
             match bot_color {

@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    cmp::{max, min},
+    collections::HashMap,
+};
 
 use rand::{seq::SliceRandom, thread_rng};
 use shakmaty::{fen::Fen, CastlingMode, Chess, EnPassantMode, Position, Role};
@@ -134,13 +137,15 @@ impl Node {
                             self.layer_number
                         );
 
-                        rating_to_return = if bot_turn {
-                            // Chosing the best move for the bot
-                            rating_to_return.max(child_node_rating)
-                        } else {
-                            // Chosing the best move for the opponent
-                            rating_to_return.min(child_node_rating)
-                        }
+                        rating_to_return =
+                            (if bot_turn { max } else { min })(rating_to_return, child_node_rating);
+                        // rating_to_return = if bot_turn {
+                        //     // Chosing the best move for the bot
+                        //     rating_to_return.max(child_node_rating)
+                        // } else {
+                        //     // Chosing the best move for the opponent
+                        //     rating_to_return.min(child_node_rating)
+                        // }
                     }
                 }
             }
