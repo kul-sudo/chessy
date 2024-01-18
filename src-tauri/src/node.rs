@@ -50,8 +50,9 @@ impl Node {
         }
 
         // Handling all the other cases (everything all the way down)
-        let mut current_rating = if bot_turn { -INFINITY } else { INFINITY }; // Needed for
-                                                                              // optimisation
+        let infinity_by_bot_turn = if bot_turn { -INFINITY } else { INFINITY };
+        let mut current_rating = infinity_by_bot_turn; // Needed for
+                                                       // optimisation
 
         let legal_moves = chess.legal_moves();
         let moves_number = legal_moves.len() as i32;
@@ -65,7 +66,7 @@ impl Node {
         } else {
             let opening_is_going = unsafe { OPENING_IS_GOING };
 
-            let mut rating_to_return = if bot_turn { -INFINITY } else { INFINITY };
+            let mut rating_to_return = infinity_by_bot_turn;
 
             let mut legal_moves_shuffled = legal_moves;
             legal_moves_shuffled.shuffle(&mut thread_rng());
@@ -73,8 +74,11 @@ impl Node {
             let coefficient = if bot_turn { 1 } else { -1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
 
             for legal_move in legal_moves_shuffled {
-                let mut temp_chess = chess.clone();
-                temp_chess.play_unchecked(&legal_move);
+                let temp_chess = {
+                    let mut chess_clone = chess.clone();
+                    chess_clone.play_unchecked(&legal_move);
+                    chess_clone
+                };
 
                 let layer_is_0 = self.layer_number == 0;
 
@@ -99,15 +103,16 @@ impl Node {
                 // Finish handling the weight
 
                 // Handle the child node rating
+                let incremented_layer_number = self.layer_number + 1;
                 if let RatingOrMove::Rating(mut child_node_rating) = (Node {
                     fen: Fen::from_position(temp_chess, EnPassantMode::Legal),
-                    layer_number: self.layer_number + 1,
+                    layer_number: incremented_layer_number,
                     weight: child_node_weight,
                     previous_current_rating: current_rating,
                 })
                 .get_node_rating_or_move()
                 {
-                    if child_node_rating.abs() == CHECKMATE_WEIGHT - (self.layer_number + 1) {
+                    if child_node_rating.abs() == CHECKMATE_WEIGHT - incremented_layer_number {
                         // If a checkmate legal move has been found, there are obviously no
                         // "better" moves
                         return if layer_is_0 {
