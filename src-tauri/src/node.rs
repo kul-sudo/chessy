@@ -144,13 +144,6 @@ impl Node {
 
                         rating_to_return =
                             (if bot_turn { max } else { min })(rating_to_return, child_node_rating);
-                        // rating_to_return = if bot_turn {
-                        //     // Chosing the best move for the bot
-                        //     rating_to_return.max(child_node_rating)
-                        // } else {
-                        //     // Chosing the best move for the opponent
-                        //     rating_to_return.min(child_node_rating)
-                        // }
                     }
                 }
             }
@@ -161,7 +154,7 @@ impl Node {
                 let max_rating = move_ratings.values().max().cloned().unwrap();
                 move_ratings.retain(|_, v| *v == max_rating);
 
-                RatingOrMove::Move(move_ratings.keys().next().unwrap().clone())
+                RatingOrMove::Move(move_ratings.keys().nth(0).unwrap().clone())
             } else {
                 RatingOrMove::Rating(rating_to_return)
             }
