@@ -20,6 +20,10 @@ use shakmaty::{fen::Fen, CastlingMode, Chess, Color, Position};
 #[tauri::command(async, rename_all = "snake_case")]
 /// Get the best move for the given FEN.
 async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
+    // let mut previous_checks_w = PREVIOUS_CHECKS_W.lock().unwrap();
+    // println!("{:?}", previous_checks_w);
+    // previous_checks_w.insert(8_i16, 8_i16);
+
     // Create an instance of Chess with the current FEN
     let fen = current_fen.parse::<Fen>().unwrap();
     let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
@@ -27,6 +31,12 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     let tree_building_time: u128;
 
     let bot_color = chess.turn(); // The current turn/color the bot has to work with
+
+    let mut previous_checks = (match bot_color {
+        Color::White => PREVIOUS_CHECKS_W.lock(),
+        Color::Black => PREVIOUS_CHECKS_B.lock(),
+    })
+    .unwrap();
 
     let root_weight = get_weight_by_fen(fen.clone(), bot_color);
     let fullmoves = chess.fullmoves();
@@ -97,6 +107,13 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         STALEMATE_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (1 + TREE_HEIGHT)
     }
 
+    if chess.halfmoves() <= 1
+    // If the bot or its opponent has captured a piece or moved a pawn.
+    // The previous positions can't repeat.
+    {
+        previous_checks.clear()
+    }
+
     let now = Instant::now();
     let move_to_return;
 
@@ -129,6 +146,20 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         unreachable!()
     }
 
+    // Changing the hashmap
+    let position = position_from_fen!(current_fen);
+
+    chess.play_unchecked(&move_to_return);
+    if root_weight.is_positive() && chess.is_check() {
+        // if previous_checks.contains_key(position) {
+        //     let old_vec = previous_checks.get_mut(position).unwrap();
+        //     old_vec.push(move_to_return);
+        //     previous_checks.insert(position, old_vec);
+        // }
+        // previous_checks.(key, value)
+        // previous_checks.insert('')
+    }
+    // previous_checks.insert(, v)
     move_to_return.to_string()
 }
 

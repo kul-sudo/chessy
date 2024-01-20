@@ -4,11 +4,11 @@ use std::{
 };
 
 use rand::{seq::SliceRandom, thread_rng};
-use shakmaty::{fen::Fen, CastlingMode, Chess, EnPassantMode, Position, Role};
+use shakmaty::{fen::Fen, CastlingMode, Chess, Color, EnPassantMode, Position, Role};
 
 use crate::{
     constants::*, correct_rating, get_piece_weight, handle_checkmate_or_stalemate, mut_static::*,
-    optimise, queen_or_king_first_move_handle, utils::RatingOrMove,
+    optimise, position_from_fen, queen_or_king_first_move_handle, utils::RatingOrMove,
 };
 
 pub struct Node {
@@ -31,9 +31,20 @@ impl Node {
     /// this weight may be adjusted according to the number of the legal moves that can me made by either the bot or the opponent.
     pub fn get_node_rating_or_move(self) -> RatingOrMove {
         // Create an instance of Chess with the current FEN
-        let chess: Chess = self.fen.into_position(CastlingMode::Standard).unwrap();
+        let chess: Chess = self
+            .fen
+            .clone()
+            .into_position(CastlingMode::Standard)
+            .unwrap();
 
-        let bot_turn = chess.turn() == unsafe { BOT_COLOR };
+        let bot_color = unsafe { BOT_COLOR };
+        let bot_turn = chess.turn() == bot_color;
+
+        let mut previous_checks = (match bot_color {
+            Color::White => PREVIOUS_CHECKS_W.lock(),
+            Color::Black => PREVIOUS_CHECKS_B.lock(),
+        })
+        .unwrap();
 
         unsafe { NODES_NUMBER += 1 }
 
@@ -98,7 +109,16 @@ impl Node {
                 // Handle the child node rating
                 let incremented_layer_number = self.layer_number + 1;
 
-                if let RatingOrMove::Rating(mut child_node_rating) = (Node {
+                let only_position = position_from_fen!(self.fen).to_string();
+                let mut child_node_rating = if layer_is_0
+                    && previous_checks.contains_key(&only_position)
+                    && previous_checks // A checking move from this position has already been made
+                        .get(&only_position)
+                        .unwrap()
+                        .contains(&legal_move)
+                {
+                    -INFINITY
+                } else if let RatingOrMove::Rating(rating) = (Node {
                     fen: Fen::from_position(temp_chess, EnPassantMode::Legal),
                     layer_number: incremented_layer_number,
                     weight: child_node_weight,
@@ -106,40 +126,44 @@ impl Node {
                 })
                 .get_node_rating_or_move()
                 {
-                    if child_node_rating.abs()
-                        == CHECKMATE_WEIGHT_STARTING_POINT - incremented_layer_number
-                    {
-                        // If a checkmate legal move has been found, there are obviously no
-                        // "better" moves
-                        return if layer_is_0 {
-                            RatingOrMove::Move(legal_move)
-                        } else {
-                            RatingOrMove::Rating(child_node_rating)
-                        };
-                    }
+                    rating
+                } else {
+                    unreachable!()
+                };
 
-                    optimise!(
-                        current_rating,
+                if child_node_rating.abs()
+                    == CHECKMATE_WEIGHT_STARTING_POINT - incremented_layer_number
+                {
+                    // If a checkmate legal move has been found, there are obviously no
+                    // "better" moves
+                    return if layer_is_0 {
+                        RatingOrMove::Move(legal_move)
+                    } else {
+                        RatingOrMove::Rating(child_node_rating)
+                    };
+                }
+
+                optimise!(
+                    current_rating,
+                    child_node_rating,
+                    bot_turn,
+                    self.previous_current_rating,
+                    self.layer_number
+                );
+
+                if layer_is_0 {
+                    // Make a hashmap of { move: rating }
+                    move_ratings.insert(legal_move, child_node_rating);
+                } else {
+                    correct_rating!(
                         child_node_rating,
-                        bot_turn,
-                        self.previous_current_rating,
+                        opening_is_going,
+                        moves_number,
                         self.layer_number
                     );
 
-                    if layer_is_0 {
-                        // Make a hashmap of { move: rating }
-                        move_ratings.insert(legal_move, child_node_rating);
-                    } else {
-                        correct_rating!(
-                            child_node_rating,
-                            opening_is_going,
-                            moves_number,
-                            self.layer_number
-                        );
-
-                        rating_to_return =
-                            (if bot_turn { max } else { min })(rating_to_return, child_node_rating);
-                    }
+                    rating_to_return =
+                        (if bot_turn { max } else { min })(rating_to_return, child_node_rating);
                 }
             }
 

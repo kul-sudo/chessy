@@ -1,4 +1,14 @@
-use shakmaty::Color;
+use lazy_static::lazy_static;
+use shakmaty::{Color, Move};
+use std::{collections::HashMap, sync::Mutex};
+
+lazy_static! {
+    // The capacity is equal to 25 due to the 50-move rule
+    pub static ref PREVIOUS_CHECKS_W: Mutex<HashMap<String, Vec<Move>>> =
+        Mutex::new(HashMap::with_capacity(25));
+    pub static ref PREVIOUS_CHECKS_B: Mutex<HashMap<String, Vec<Move>>> =
+        Mutex::new(HashMap::with_capacity(25));
+}
 
 pub static mut TREE_HEIGHT: i32 = 4;
 
