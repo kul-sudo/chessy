@@ -22,7 +22,7 @@ const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 const ChessboardPage: NextPage = () => {
   const [game, setGame] = useState(
     new Chess()
-    // 'k7/r7/2q5/8/6R1/8/8/5K2 w - - 0 1'
+    // 'k7/8/2b5/8/1b6/8/8/5K2 w - - 0 1'
   )
   const [moveFrom, setMoveFrom] = useState<Square | ''>()
   const [moveTo, setMoveTo] = useState<Square | null>(null)

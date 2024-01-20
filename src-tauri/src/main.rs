@@ -41,6 +41,12 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         // Making sure the game has just begun prevents the issue when the brancing rate from the
         // previous game was used in the new one for the bot of this colour.
         tree_height = MIN_TREE_HEIGHT;
+        unsafe {
+            match bot_color {
+                Color::White => PREVIOUS_TREE_HEIGHT_WHITE = MIN_TREE_HEIGHT,
+                Color::Black => PREVIOUS_TREE_HEIGHT_BLACK = MIN_TREE_HEIGHT,
+            }
+        }
     } else {
         let branching_rate = unsafe {
             match bot_color {
@@ -64,7 +70,19 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
                     _ => 0,
                 }
         } else {
-            tree_height = MIN_TREE_HEIGHT
+            tree_height = unsafe {
+                match bot_color {
+                    Color::White => PREVIOUS_TREE_HEIGHT_WHITE,
+                    Color::Black => PREVIOUS_TREE_HEIGHT_BLACK,
+                }
+            }
+        }
+    }
+
+    unsafe {
+        match bot_color {
+            Color::White => PREVIOUS_TREE_HEIGHT_WHITE = tree_height,
+            Color::Black => PREVIOUS_TREE_HEIGHT_BLACK = tree_height,
         }
     }
 
@@ -76,7 +94,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         BOT_COLOR = bot_color;
         BOT_WANTS_STALEMATE = root_weight <= -ROOK_WEIGHT;
         OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap();
-        STALEMATE_WEIGHT = CHECKMATE_WEIGHT - 1 - TREE_HEIGHT
+        STALEMATE_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (1 + TREE_HEIGHT)
     }
 
     let now = Instant::now();

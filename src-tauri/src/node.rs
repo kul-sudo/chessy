@@ -11,7 +11,6 @@ use crate::{
     optimise, queen_or_king_first_move_handle, utils::RatingOrMove,
 };
 
-/// Node struct.
 pub struct Node {
     /// The FEN of the node.
     pub fen: Fen,
@@ -31,14 +30,8 @@ impl Node {
     /// Get the rating of the current node (the final weight when both the bot and the opponent play in the best way possible);
     /// this weight may be adjusted according to the number of the legal moves that can me made by either the bot or the opponent.
     pub fn get_node_rating_or_move(self) -> RatingOrMove {
-        let stalemate_weight = unsafe { STALEMATE_WEIGHT };
-
         // Create an instance of Chess with the current FEN
-        let chess: Chess = self
-            .fen
-            .clone()
-            .into_position(CastlingMode::Standard)
-            .unwrap();
+        let chess: Chess = self.fen.into_position(CastlingMode::Standard).unwrap();
 
         let bot_turn = chess.turn() == unsafe { BOT_COLOR };
 
@@ -46,7 +39,7 @@ impl Node {
 
         if self.layer_number > 0 {
             // JS doesn't call Rust if there's a checkmate or stalemate
-            handle_checkmate_or_stalemate!(chess, bot_turn, stalemate_weight, self.layer_number);
+            handle_checkmate_or_stalemate!(chess, bot_turn, self.layer_number);
         }
 
         // Handling all the other cases (everything all the way down)
@@ -104,6 +97,7 @@ impl Node {
 
                 // Handle the child node rating
                 let incremented_layer_number = self.layer_number + 1;
+
                 if let RatingOrMove::Rating(mut child_node_rating) = (Node {
                     fen: Fen::from_position(temp_chess, EnPassantMode::Legal),
                     layer_number: incremented_layer_number,
@@ -112,7 +106,9 @@ impl Node {
                 })
                 .get_node_rating_or_move()
                 {
-                    if child_node_rating.abs() == CHECKMATE_WEIGHT - incremented_layer_number {
+                    if child_node_rating.abs()
+                        == CHECKMATE_WEIGHT_STARTING_POINT - incremented_layer_number
+                    {
                         // If a checkmate legal move has been found, there are obviously no
                         // "better" moves
                         return if layer_is_0 {
@@ -136,7 +132,6 @@ impl Node {
                     } else {
                         correct_rating!(
                             child_node_rating,
-                            stalemate_weight,
                             opening_is_going,
                             moves_number,
                             self.layer_number
