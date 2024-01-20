@@ -10,7 +10,7 @@ pub enum RatingOrMove {
 #[macro_export]
 macro_rules! position_from_fen {
     ($fen:expr) => {
-        $fen.to_string().split_once(' ').unwrap().0
+        $fen.to_string().split_once(' ').unwrap().0.to_string()
     };
 }
 
@@ -33,9 +33,8 @@ pub fn get_weight_by_fen(fen: Fen, bot_color: Color) -> i32 {
         })
         .sum();
 
-    if bot_color == Color::White {
-        weight_for_white
-    } else {
-        -weight_for_white
+    match bot_color {
+        Color::White => weight_for_white,
+        Color::Black => -weight_for_white,
     }
 }

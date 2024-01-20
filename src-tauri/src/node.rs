@@ -40,7 +40,7 @@ impl Node {
         let bot_color = unsafe { BOT_COLOR };
         let bot_turn = chess.turn() == bot_color;
 
-        let mut previous_checks = (match bot_color {
+        let previous_checks = (match bot_color {
             Color::White => PREVIOUS_CHECKS_W.lock(),
             Color::Black => PREVIOUS_CHECKS_B.lock(),
         })
@@ -109,7 +109,8 @@ impl Node {
                 // Handle the child node rating
                 let incremented_layer_number = self.layer_number + 1;
 
-                let only_position = position_from_fen!(self.fen).to_string();
+                let only_position = position_from_fen!(self.fen);
+
                 let mut child_node_rating = if layer_is_0
                     && previous_checks.contains_key(&only_position)
                     && previous_checks // A checking move from this position has already been made

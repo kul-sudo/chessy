@@ -26,7 +26,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
 
     // Create an instance of Chess with the current FEN
     let fen = current_fen.parse::<Fen>().unwrap();
-    let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
+    let mut chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
     let tree_building_time: u128;
 
@@ -149,17 +149,17 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     // Changing the hashmap
     let position = position_from_fen!(current_fen);
 
-    chess.play_unchecked(&move_to_return);
-    if root_weight.is_positive() && chess.is_check() {
-        // if previous_checks.contains_key(position) {
-        //     let old_vec = previous_checks.get_mut(position).unwrap();
-        //     old_vec.push(move_to_return);
-        //     previous_checks.insert(position, old_vec);
-        // }
-        // previous_checks.(key, value)
-        // previous_checks.insert('')
+    if root_weight.is_positive() {
+        chess.play_unchecked(&move_to_return);
+
+        if chess.is_check() {
+            previous_checks
+                .entry(position)
+                .and_modify(|old_vec| old_vec.push(move_to_return.clone()))
+                .or_insert_with(|| vec![move_to_return.clone()]);
+        }
     }
-    // previous_checks.insert(, v)
+
     move_to_return.to_string()
 }
 

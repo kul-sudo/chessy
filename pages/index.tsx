@@ -12,7 +12,7 @@ import { listen } from '@tauri-apps/api/event'
 
 const SHOW_CHESSBOARD = true
 const WRITE_TO_FILE = true
-const BOT_VS_BOT = true
+const BOT_VS_BOT = false
 const BOT_COLOUR: ChessJS.Color = 'b'
 
 let gameHistory: string[] = []
