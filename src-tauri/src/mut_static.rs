@@ -1,10 +1,14 @@
-// use once_cell::sync::Lazy;
+use once_cell::sync::Lazy;
 use shakmaty::Color;
-// use std::{collections::HashMap, sync::Mutex};
+use std::sync::Mutex;
 
 pub static mut TREE_HEIGHT: i32 = 4;
 
-// pub static ARRAY: Lazy<Mutex<HashMap<u8, String>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static POSITIONS_IN_CHECK_W: Lazy<Mutex<Vec<String>>> =
+    Lazy::new(|| Mutex::new(Vec::with_capacity(25)));
+pub static POSITIONS_IN_CHECK_B: Lazy<Mutex<Vec<String>>> =
+    Lazy::new(|| Mutex::new(Vec::with_capacity(25)));
+
 pub static mut ONE_NODE_HANDLE_TIME: f64 = 0.0;
 
 pub static mut BRANCHING_RATE_WHITE: f64 = 0.0;

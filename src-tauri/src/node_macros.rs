@@ -31,11 +31,26 @@ macro_rules! handle_checkmate_or_stalemate {
 /// If there's no checkmate or stalemate, the rating is corrected according
 /// to the number of moves of the bot and the opponent.
 macro_rules! correct_rating {
-    ($child_node_rating:expr, $opening_is_going:expr, $moves_number:expr, $layer_number:expr) => {
+    ($fen:expr, $bot_color:expr, $child_node_rating:expr, $opening_is_going:expr, $moves_number:expr, $layer_number:expr) => {
         if $child_node_rating.abs() < unsafe { STALEMATE_WEIGHT_STARTING_POINT - TREE_HEIGHT } {
             // ^ Making sure $child_node_rating is neither a checkmate nor a staltemate
             $child_node_rating += match $layer_number {
-                1 => -2 * $moves_number, // It's been experimentally detemined that the more moves the opponent has, the worse.
+                1 => {
+                    -2 * (if {
+                        let position =
+                            get_only_position!($fen.to_string())
+                            .to_string();
+
+                        (match $bot_color {
+                            Color::White => POSITIONS_IN_CHECK_B.lock(),
+                            Color::Black => POSITIONS_IN_CHECK_W.lock()
+                        }).unwrap().contains(&position)
+                    } {
+                        MAX_LEGAL_MOVES // Suppressing repeating checks
+                    } else {
+                        $moves_number
+                    })
+                }, // It's been experimentally detemined that the more moves the opponent has, the worse.
                 2 if $opening_is_going && unsafe { !FIRST_QUEEN_OR_KING_MOVE } => {
                     // Needed during the opening for the bot to develop its pieces;
                     // however, after the end of the opening, it may cause endless repetitive moves

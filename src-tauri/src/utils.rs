@@ -7,12 +7,25 @@ pub enum RatingOrMove {
     Move(Move),
 }
 
+#[macro_export]
+macro_rules! get_only_position {
+    ($fen:expr) => {
+        $fen.split_once(' ').unwrap().0
+    };
+}
+
+#[macro_export]
+macro_rules! clear_positions_in_check {
+    () => {
+        for positions_in_check in [&POSITIONS_IN_CHECK_W, &POSITIONS_IN_CHECK_B] {
+            positions_in_check.lock().unwrap().clear()
+        }
+    };
+}
+
 /// Calculate the weight for either black or white using the given FEN.
 pub fn get_weight_by_fen(fen: String, bot_color: Color) -> i32 {
-    let weight_for_white = fen
-        .split_once(' ')
-        .unwrap()
-        .0
+    let weight_for_white = get_only_position!(fen)
         .chars()
         .map(|piece| match piece {
             'P' => PAWN_WEIGHT,

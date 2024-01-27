@@ -15,14 +15,14 @@ use tauri::{AppHandle, Manager};
 use utils::*;
 
 use node::Node;
-use shakmaty::{fen::Fen, CastlingMode, Chess, Color, Position};
+use shakmaty::{fen::Fen, CastlingMode, Chess, Color, EnPassantMode, Position};
 
 #[tauri::command(async, rename_all = "snake_case")]
 /// Get the best move for the given FEN.
 async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     // Create an instance of Chess with the current FEN
     let fen = current_fen.parse::<Fen>().unwrap();
-    let chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
+    let mut chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
     let tree_building_time: u128;
 
@@ -42,10 +42,11 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         // previous game was used in the new one for the bot of this colour.
         tree_height = MIN_TREE_HEIGHT;
         unsafe {
+            clear_positions_in_check!();
             match bot_color {
                 Color::White => PREVIOUS_TREE_HEIGHT_WHITE = MIN_TREE_HEIGHT,
                 Color::Black => PREVIOUS_TREE_HEIGHT_BLACK = MIN_TREE_HEIGHT,
-            }
+            };
         }
     } else {
         let branching_rate = unsafe {
@@ -100,6 +101,10 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     let now = Instant::now();
     let move_to_return;
 
+    if chess.halfmoves() <= 1 {
+        clear_positions_in_check!();
+    }
+
     if let RatingOrMove::Move(value) = (Node {
         fen,
         layer_number: 0,
@@ -127,6 +132,22 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         }
     } else {
         unreachable!()
+    }
+
+    if unsafe { !BOT_WANTS_DRAW } && {
+        chess.play_unchecked(&move_to_return);
+        chess.is_check()
+    } {
+        let position =
+            get_only_position!(Fen::from_position(chess, EnPassantMode::Legal).to_string())
+                .to_string();
+
+        (match bot_color {
+            Color::White => POSITIONS_IN_CHECK_B.lock(),
+            Color::Black => POSITIONS_IN_CHECK_W.lock(),
+        })
+        .unwrap()
+        .push(position);
     }
 
     move_to_return.to_string()
