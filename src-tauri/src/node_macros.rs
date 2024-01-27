@@ -18,7 +18,7 @@ macro_rules! handle_checkmate_or_stalemate {
                 unsafe { STALEMATE_WEIGHT_STARTING_POINT } - $layer_number;
             // Return the worst or best weight depending on whether the bot wants a stalemate;
             // however, a checkmate has a higher weight than a stalemate
-            return RatingOrMove::Rating(if unsafe { BOT_WANTS_STALEMATE } {
+            return RatingOrMove::Rating(if unsafe { BOT_WANTS_DRAW } {
                 stalemate_weight_for_this_layer
             } else {
                 -stalemate_weight_for_this_layer
@@ -59,7 +59,7 @@ macro_rules! optimise {
                     return RatingOrMove::Rating(-INFINITY);
                 }
             }
-            _ => {
+            2.. => {
                 if $bot_turn {
                     if $current_rating >= $previous_current_rating {
                         return RatingOrMove::Rating(INFINITY);
@@ -68,6 +68,7 @@ macro_rules! optimise {
                     return RatingOrMove::Rating(-INFINITY);
                 }
             }
+            _ => (),
         }
         // End the optimisation
     };

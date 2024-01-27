@@ -20,10 +20,7 @@ let gameHistory: string[] = []
 const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 
 const ChessboardPage: NextPage = () => {
-  const [game, setGame] = useState(
-    new Chess()
-    // 'k7/8/2b5/8/1b6/8/8/5K2 w - - 0 1'
-  )
+  const [game, setGame] = useState(new Chess())
   const [moveFrom, setMoveFrom] = useState<Square | ''>()
   const [moveTo, setMoveTo] = useState<Square | null>(null)
   const [showPromotionDialog, setShowPromotionDialog] = useState(false)
@@ -230,21 +227,21 @@ const ChessboardPage: NextPage = () => {
 
   const game_turn = game.turn()
 
-  useEffect(() => {
-    if (!BOT_VS_BOT && game.turn() === BOT_COLOUR) {
-      makeBotMove()
-    }
-  }, [game, game_turn, makeBotMove])
-
-  useEffect(() => {
-    if (WRITE_TO_FILE) {
-      gameHistory.push(game.fen())
-    }
-
-    if (BOT_VS_BOT && run && !game.isGameOver()) {
-      makeBotMove()
-    }
-  }, [game_turn, game, run, makeBotMove])
+  // useEffect(() => {
+  //   if (!BOT_VS_BOT && game.turn() === BOT_COLOUR) {
+  //     makeBotMove()
+  //   }
+  // }, [game, game_turn, makeBotMove])
+  //
+  // useEffect(() => {
+  //   if (WRITE_TO_FILE) {
+  //     gameHistory.push(game.fen())
+  //   }
+  //
+  //   if (BOT_VS_BOT && run && !game.isGameOver()) {
+  //     makeBotMove()
+  //   }
+  // }, [game_turn, game, run, makeBotMove])
 
   return (
     <div
@@ -296,6 +293,18 @@ const ChessboardPage: NextPage = () => {
         }}
       >
         {run ? 'Stop' : 'Run'}
+      </Button>
+
+      <Button
+        onClick={() => {
+          if (WRITE_TO_FILE) {
+            gameHistory.push(game.fen())
+          }
+
+          makeBotMove()
+        }}
+      >
+        Move
       </Button>
 
       <Text c="#fff">tree_height = {treeHeight}</Text>

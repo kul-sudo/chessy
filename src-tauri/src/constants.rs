@@ -11,6 +11,8 @@ pub static MAX_OPENING_MOVES: u32 = 20;
 pub static INFINITY: i32 = i32::MAX;
 pub static CHECKMATE_WEIGHT_STARTING_POINT: i32 = INFINITY - 1;
 
+pub static DRAW_LEVEL: i32 = -ROOK_WEIGHT;
+
 // The number of legal moves a piece can make on an empty board
 static MAX_KNIGHT_MOVES: i32 = 8;
 static MAX_BISHOP_MOVES: i32 = 7 * 2;

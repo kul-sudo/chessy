@@ -28,7 +28,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
 
     let bot_color = chess.turn(); // The current turn/color the bot has to work with
 
-    let root_weight = get_weight_by_fen(fen.clone(), bot_color);
+    let root_weight = get_weight_by_fen(current_fen, bot_color);
     let fullmoves = chess.fullmoves();
 
     // Start defining the height of the tree
@@ -92,9 +92,9 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     unsafe {
         TREE_HEIGHT = tree_height;
         BOT_COLOR = bot_color;
-        BOT_WANTS_STALEMATE = root_weight <= -ROOK_WEIGHT;
+        BOT_WANTS_DRAW = root_weight <= DRAW_LEVEL;
         OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap();
-        STALEMATE_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (1 + TREE_HEIGHT)
+        STALEMATE_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (TREE_HEIGHT + 1)
     }
 
     let now = Instant::now();

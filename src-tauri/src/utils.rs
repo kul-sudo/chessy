@@ -1,4 +1,4 @@
-use shakmaty::{fen::Fen, Color, Move};
+use shakmaty::{Color, Move};
 
 use crate::constants::*;
 
@@ -8,9 +8,8 @@ pub enum RatingOrMove {
 }
 
 /// Calculate the weight for either black or white using the given FEN.
-pub fn get_weight_by_fen(fen: Fen, bot_color: Color) -> i32 {
+pub fn get_weight_by_fen(fen: String, bot_color: Color) -> i32 {
     let weight_for_white = fen
-        .to_string()
         .split_once(' ')
         .unwrap()
         .0
@@ -30,9 +29,8 @@ pub fn get_weight_by_fen(fen: Fen, bot_color: Color) -> i32 {
         })
         .sum();
 
-    if bot_color == Color::White {
-        weight_for_white
-    } else {
-        -weight_for_white
+    match bot_color {
+        Color::White => weight_for_white,
+        Color::Black => -weight_for_white,
     }
 }
