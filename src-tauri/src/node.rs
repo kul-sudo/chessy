@@ -68,6 +68,8 @@ impl Node {
 
             let coefficient = if bot_turn { 1 } else { -1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
 
+            let layer_is_0 = self.layer_number == 0;
+
             for legal_move in {
                 let mut legal_moves_shuffled = legal_moves;
                 legal_moves_shuffled.shuffle(&mut thread_rng());
@@ -78,8 +80,6 @@ impl Node {
                     chess_clone.play_unchecked(&legal_move);
                     chess_clone
                 };
-
-                let layer_is_0 = self.layer_number == 0;
 
                 queen_or_king_first_move_handle!(layer_is_0, legal_move);
 
@@ -152,7 +152,7 @@ impl Node {
             }
 
             // The final return phase
-            if self.layer_number == 0 {
+            if layer_is_0 {
                 // Keep the elements with the best rating
                 let max_rating = move_ratings.values().max().cloned().unwrap();
                 move_ratings.retain(|_, v| *v == max_rating);

@@ -21,7 +21,8 @@ const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 
 const ChessboardPage: NextPage = () => {
   const [game, setGame] = useState(
-    new Chess('5b1k/6nn/7N/8/8/6PP/5nPK/RRR2NRQ w - - 0 1')
+    new Chess()
+    // '5b1k/6nn/7N/8/8/6PP/5nPK/RRR2NRQ w - - 0 1'
   )
   const [moveFrom, setMoveFrom] = useState<Square | ''>()
   const [moveTo, setMoveTo] = useState<Square | null>(null)
@@ -229,21 +230,21 @@ const ChessboardPage: NextPage = () => {
 
   const game_turn = game.turn()
 
-  // useEffect(() => {
-  //   if (!BOT_VS_BOT && game.turn() === BOT_COLOUR) {
-  //     makeBotMove()
-  //   }
-  // }, [game, game_turn, makeBotMove])
-  //
-  // useEffect(() => {
-  //   if (WRITE_TO_FILE) {
-  //     gameHistory.push(game.fen())
-  //   }
-  //
-  //   if (BOT_VS_BOT && run && !game.isGameOver()) {
-  //     makeBotMove()
-  //   }
-  // }, [game_turn, game, run, makeBotMove])
+  useEffect(() => {
+    if (!BOT_VS_BOT && game.turn() === BOT_COLOUR) {
+      makeBotMove()
+    }
+  }, [game, game_turn, makeBotMove])
+
+  useEffect(() => {
+    if (WRITE_TO_FILE) {
+      gameHistory.push(game.fen())
+    }
+
+    if (BOT_VS_BOT && run && !game.isGameOver()) {
+      makeBotMove()
+    }
+  }, [game_turn, game, run, makeBotMove])
 
   return (
     <div
