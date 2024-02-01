@@ -31,11 +31,11 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     let root_weight = get_weight_by_fen(current_fen, bot_color);
     let fullmoves = chess.fullmoves();
 
-    // Start defining the height of the tree
-    let tree_height;
-
     // Reset the value
     unsafe { NODES_NUMBER = 0 }
+
+    // Start defining the height of the tree
+    let tree_height;
 
     if fullmoves == NonZeroU32::new(1).unwrap() {
         // Making sure the game has just begun prevents the issue when the brancing rate from the
