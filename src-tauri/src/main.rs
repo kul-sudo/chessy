@@ -95,7 +95,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         BOT_COLOR = bot_color;
         BOT_WANTS_DRAW = root_weight <= DRAW_LEVEL;
         OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap();
-        STALEMATE_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (TREE_HEIGHT + 1)
+        DRAW_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (TREE_HEIGHT + 1)
     }
 
     let now = Instant::now();

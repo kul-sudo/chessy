@@ -28,6 +28,6 @@ pub static mut BOT_WANTS_DRAW: bool = false;
 /// Whether the opening part of the game is still going.
 pub static mut OPENING_IS_GOING: bool = false;
 
-pub static mut STALEMATE_WEIGHT_STARTING_POINT: i32 = 0;
+pub static mut DRAW_WEIGHT_STARTING_POINT: i32 = 0;
 
 pub static mut FIRST_QUEEN_OR_KING_MOVE: bool = false;

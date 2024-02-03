@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! handle_checkmate_or_stalemate {
+macro_rules! handle_checkmate_or_draw {
     ($chess:expr, $bot_turn:expr, $layer_number:expr) => {
         // Handle a possible checkmate
         if $chess.is_checkmate() {
@@ -12,16 +12,15 @@ macro_rules! handle_checkmate_or_stalemate {
             });
         }
 
-        // Handle a possible stalemate
-        if $chess.is_stalemate() {
-            let stalemate_weight_for_this_layer =
-                unsafe { STALEMATE_WEIGHT_STARTING_POINT } - $layer_number;
-            // Return the worst or best weight depending on whether the bot wants a stalemate;
-            // however, a checkmate has a higher weight than a stalemate
+        // Handle a possible draw
+        if $chess.halfmoves() == 50 || $chess.is_stalemate() {
+            let draw_weight_for_this_layer = unsafe { DRAW_WEIGHT_STARTING_POINT } - $layer_number;
+            // Return the worst or best weight depending on whether the bot wants a draw;
+            // however, a checkmate has a higher weight than a draw
             return RatingOrMove::Rating(if unsafe { BOT_WANTS_DRAW } {
-                stalemate_weight_for_this_layer
+                draw_weight_for_this_layer
             } else {
-                -stalemate_weight_for_this_layer
+                -draw_weight_for_this_layer
             });
         }
     };
@@ -32,7 +31,7 @@ macro_rules! handle_checkmate_or_stalemate {
 /// to the number of moves of the bot and the opponent.
 macro_rules! correct_rating {
     ($fen:expr, $bot_color:expr, $child_node_rating:expr, $opening_is_going:expr, $moves_number:expr, $layer_number:expr) => {
-        if $child_node_rating.abs() < unsafe { STALEMATE_WEIGHT_STARTING_POINT - TREE_HEIGHT } {
+        if $child_node_rating.abs() < unsafe { DRAW_WEIGHT_STARTING_POINT - TREE_HEIGHT } {
             // ^ Making sure $child_node_rating is neither a checkmate nor a staltemate
             $child_node_rating += match $layer_number {
                 1 => {

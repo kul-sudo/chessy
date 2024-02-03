@@ -7,9 +7,8 @@ use rand::{seq::SliceRandom, thread_rng};
 use shakmaty::{fen::Fen, CastlingMode, Chess, Color, EnPassantMode, Position, Role};
 
 use crate::{
-    constants::*, correct_rating, get_only_position, get_piece_weight,
-    handle_checkmate_or_stalemate, mut_static::*, optimise, queen_or_king_first_move_handle,
-    utils::RatingOrMove,
+    constants::*, correct_rating, get_only_position, get_piece_weight, handle_checkmate_or_draw,
+    mut_static::*, optimise, queen_or_king_first_move_handle, utils::RatingOrMove,
 };
 
 pub struct Node {
@@ -44,7 +43,7 @@ impl Node {
 
         if self.layer_number > 0 {
             // JS doesn't call Rust if there's a checkmate or stalemate
-            handle_checkmate_or_stalemate!(chess, bot_turn, self.layer_number);
+            handle_checkmate_or_draw!(chess, bot_turn, self.layer_number);
         }
 
         // Handling all the other cases (everything all the way down)
