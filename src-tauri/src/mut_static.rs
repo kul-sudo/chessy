@@ -2,6 +2,9 @@ use once_cell::sync::Lazy;
 use shakmaty::Color;
 use std::sync::Mutex;
 
+pub static mut USE_BOOK_MOVE_W: bool = true;
+pub static mut USE_BOOK_MOVE_B: bool = true;
+
 pub static mut TREE_HEIGHT: i32 = 4;
 
 pub static POSITIONS_IN_CHECK_W: Lazy<Mutex<Vec<String>>> =

@@ -4,11 +4,12 @@ use std::{
 };
 
 use rand::{seq::SliceRandom, thread_rng};
-use shakmaty::{fen::Fen, CastlingMode, Chess, Color, EnPassantMode, Position, Role};
+use shakmaty::{fen::Fen, uci::Uci, CastlingMode, Chess, Color, EnPassantMode, Position, Role};
 
 use crate::{
     constants::*, correct_rating, get_only_position, get_piece_weight, handle_checkmate_or_draw,
-    mut_static::*, optimise, queen_or_king_first_move_handle, utils::RatingOrMove,
+    mut_static::*, opening_book::opening_book, optimise, queen_or_king_first_move_handle,
+    utils::RatingOrMove,
 };
 
 pub struct Node {
@@ -36,6 +37,43 @@ impl Node {
             .clone()
             .into_position(CastlingMode::Standard)
             .unwrap();
+
+        let layer_is_0 = self.layer_number == 0;
+        if layer_is_0
+            && unsafe {
+                match BOT_COLOR {
+                    Color::White => USE_BOOK_MOVE_W,
+                    Color::Black => USE_BOOK_MOVE_B,
+                }
+            }
+        {
+            match opening_book(
+                self.fen
+                    .clone()
+                    .to_string()
+                    .rsplitn(3, ' ')
+                    .collect::<Vec<_>>()
+                    .last()
+                    .unwrap(),
+            ) {
+                case if !case.is_empty() => {
+                    return RatingOrMove::Move(
+                        case.choose(&mut thread_rng())
+                            .unwrap()
+                            .parse::<Uci>()
+                            .unwrap()
+                            .to_move(&chess)
+                            .unwrap(),
+                    )
+                }
+                _ => unsafe {
+                    match BOT_COLOR {
+                        Color::White => USE_BOOK_MOVE_W = false,
+                        Color::Black => USE_BOOK_MOVE_B = false,
+                    }
+                },
+            }
+        }
 
         let bot_turn = chess.turn() == unsafe { BOT_COLOR };
 
@@ -66,8 +104,6 @@ impl Node {
             let mut rating_to_return = infinity_by_bot_turn;
 
             let coefficient = if bot_turn { 1 } else { -1 }; // Defines whether a capture or promotion is good for the bot depending on the turn/color
-
-            let layer_is_0 = self.layer_number == 0;
 
             for legal_move in {
                 let mut legal_moves_shuffled = legal_moves;

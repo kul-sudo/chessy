@@ -29,9 +29,7 @@ const isGameOver = (chess: ChessJS.Chess) => {
 }
 
 const ChessboardPage: NextPage = () => {
-  const [game, setGame] = useState(
-    new Chess('rr3b1k/6nn/7N/8/8/8/PPPPPPPP/4K3 w - - 0 1')
-  )
+  const [game, setGame] = useState(new Chess())
   const [moveFrom, setMoveFrom] = useState<Square | ''>()
   const [moveTo, setMoveTo] = useState<Square | null>(null)
   const [showPromotionDialog, setShowPromotionDialog] = useState(false)

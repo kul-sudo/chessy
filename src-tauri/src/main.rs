@@ -7,6 +7,7 @@ mod constants;
 mod mut_static;
 mod node;
 mod node_macros;
+mod opening_book;
 mod utils;
 
 use constants::*;
