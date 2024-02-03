@@ -93,7 +93,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     unsafe {
         TREE_HEIGHT = tree_height;
         BOT_COLOR = bot_color;
-        BOT_WANTS_DRAW = root_weight <= DRAW_LEVEL;
+        BOT_WANTS_DRAW = root_weight <= DRAW_LEVEL || chess.has_insufficient_material(bot_color);
         OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap();
         DRAW_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (TREE_HEIGHT + 1)
     }
@@ -101,7 +101,7 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     let now = Instant::now();
     let move_to_return;
 
-    if chess.halfmoves() <= 1 {
+    if chess.halfmoves() == 0 {
         clear_positions_in_check!();
     }
 
@@ -134,13 +134,21 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         unreachable!()
     }
 
-    if unsafe { !BOT_WANTS_DRAW } && {
+    if move_to_return.is_zeroing() {
+        clear_positions_in_check!();
+    }
+
+    let chess_after_move = {
         chess.play_unchecked(&move_to_return);
-        chess.is_check()
-    } {
+        chess
+    };
+
+    if unsafe { !BOT_WANTS_DRAW } && chess_after_move.is_check() {
         let position =
-            get_only_position!(Fen::from_position(chess, EnPassantMode::Legal).to_string())
-                .to_string();
+            get_only_position!(
+                Fen::from_position(chess_after_move, EnPassantMode::Legal).to_string()
+            )
+            .to_string();
 
         (match bot_color {
             Color::White => POSITIONS_IN_CHECK_B.lock(),

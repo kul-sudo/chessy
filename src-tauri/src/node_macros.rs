@@ -30,10 +30,10 @@ macro_rules! handle_checkmate_or_draw {
 /// If there's no checkmate or stalemate, the rating is corrected according
 /// to the number of moves of the bot and the opponent.
 macro_rules! correct_rating {
-    ($fen:expr, $bot_color:expr, $child_node_rating:expr, $opening_is_going:expr, $moves_number:expr, $layer_number:expr) => {
-        if $child_node_rating.abs() < unsafe { DRAW_WEIGHT_STARTING_POINT - TREE_HEIGHT } {
+    ($rating_to_return:expr, $fen:expr, $bot_color:expr, $opening_is_going:expr, $moves_number:expr, $layer_number:expr) => {
+        if $rating_to_return.abs() < unsafe { DRAW_WEIGHT_STARTING_POINT - TREE_HEIGHT } {
             // ^ Making sure $child_node_rating is neither a checkmate nor a staltemate
-            $child_node_rating += match $layer_number {
+            $rating_to_return += match $layer_number {
                 1 => {
                     -2 * (if {
                         let position =

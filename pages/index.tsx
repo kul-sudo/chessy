@@ -14,15 +14,23 @@ const SHOW_CHESSBOARD = true
 const WRITE_TO_FILE = true
 const BOT_VS_BOT = true
 const BOT_COLOUR: ChessJS.Color = 'b'
+const DEBUG = false
 
 let gameHistory: string[] = []
 
 const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 
+const isGameOver = (chess: ChessJS.Chess) => {
+  return DEBUG
+    ? chess.isCheckmate() ||
+        chess.isStalemate() ||
+        chess.isThreefoldRepetition()
+    : chess.isGameOver()
+}
+
 const ChessboardPage: NextPage = () => {
   const [game, setGame] = useState(
-    new Chess()
-    // '5b1k/6nn/7N/8/8/6PP/5nPK/RRR2NRQ w - - 0 1'
+    new Chess('rr3b1k/6nn/7N/8/8/8/PPPPPPPP/4K3 w - - 0 1')
   )
   const [moveFrom, setMoveFrom] = useState<Square | ''>()
   const [moveTo, setMoveTo] = useState<Square | null>(null)
@@ -31,6 +39,7 @@ const ChessboardPage: NextPage = () => {
   const [moveSquares, setMoveSquares] = useState({})
   const [optionSquares, setOptionSquares] = useState({})
   const [treeHeight, setTreeHeight] = useState('')
+  const [movesN, setMovesN] = useState<number>(0)
 
   const [run, setRun] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -62,6 +71,7 @@ const ChessboardPage: NextPage = () => {
     }).then(move => {
       makeMove(move)
       setIsLoading(false)
+      setMovesN(prevValue => prevValue + 1)
     })
   }, [game, makeMove])
 
@@ -213,7 +223,7 @@ const ChessboardPage: NextPage = () => {
   }
 
   useEffect(() => {
-    if (game.isGameOver()) {
+    if (isGameOver(game)) {
       if (WRITE_TO_FILE) {
         writeFile({
           path: '/home/user/Documents/chessy/data/game.json',
@@ -241,7 +251,7 @@ const ChessboardPage: NextPage = () => {
       gameHistory.push(game.fen())
     }
 
-    if (BOT_VS_BOT && run && !game.isGameOver()) {
+    if (BOT_VS_BOT && run && !isGameOver(game)) {
       makeBotMove()
     }
   }, [game_turn, game, run, makeBotMove])
@@ -311,6 +321,7 @@ const ChessboardPage: NextPage = () => {
       </Button>
 
       <Text c="#fff">tree_height = {treeHeight}</Text>
+      <Text c="#fff">moves_n = {movesN}</Text>
 
       {isLoading && <Loader />}
     </div>

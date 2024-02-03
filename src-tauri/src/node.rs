@@ -103,7 +103,7 @@ impl Node {
                 // Handle the child node rating
                 let incremented_layer_number = self.layer_number + 1;
 
-                if let RatingOrMove::Rating(mut child_node_rating) = (Node {
+                if let RatingOrMove::Rating(child_node_rating) = (Node {
                     fen: Fen::from_position(temp_chess, EnPassantMode::Legal),
                     layer_number: incremented_layer_number,
                     weight: child_node_weight,
@@ -135,14 +135,14 @@ impl Node {
                         // Make a hashmap of { move: rating }
                         move_ratings.insert(legal_move, child_node_rating);
                     } else {
-                        correct_rating!(
-                            self.fen,
-                            unsafe { BOT_COLOR },
-                            child_node_rating,
-                            opening_is_going,
-                            moves_number,
-                            self.layer_number
-                        );
+                        // correct_rating!(
+                        //     self.fen,
+                        //     unsafe { BOT_COLOR },
+                        //     child_node_rating,
+                        //     opening_is_going,
+                        //     moves_number,
+                        //     self.layer_number
+                        // );
 
                         rating_to_return =
                             (if bot_turn { max } else { min })(rating_to_return, child_node_rating);
@@ -158,7 +158,18 @@ impl Node {
 
                 RatingOrMove::Move(move_ratings.keys().nth(0).unwrap().clone())
             } else {
-                RatingOrMove::Rating(rating_to_return)
+                RatingOrMove::Rating({
+                    correct_rating!(
+                        rating_to_return,
+                        self.fen,
+                        unsafe { BOT_COLOR },
+                        opening_is_going,
+                        moves_number,
+                        self.layer_number
+                    );
+
+                    rating_to_return
+                })
             }
         }
     }
