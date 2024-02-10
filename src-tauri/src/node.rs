@@ -39,24 +39,29 @@ impl Node {
             .unwrap();
 
         let layer_is_0 = self.layer_number == 0;
-        if layer_is_0
-            && unsafe {
-                match BOT_COLOR {
-                    Color::White => USE_BOOK_MOVE_W,
-                    Color::Black => USE_BOOK_MOVE_B,
-                }
-            }
-        {
+        if layer_is_0 {
             match opening_book(
                 self.fen
                     .clone()
                     .to_string()
                     .rsplitn(3, ' ')
-                    .collect::<Vec<_>>()
+                    .collect::<Vec<&str>>()
                     .last()
                     .unwrap(),
             ) {
-                case if !case.is_empty() => {
+                case if case.is_empty() => unsafe {
+                    match BOT_COLOR {
+                        Color::White => LAST_MOVE_FROM_BOOK_W = false,
+                        Color::Black => LAST_MOVE_FROM_BOOK_B = false,
+                    }
+                },
+                case => {
+                    unsafe {
+                        match BOT_COLOR {
+                            Color::White => LAST_MOVE_FROM_BOOK_W = true,
+                            Color::Black => LAST_MOVE_FROM_BOOK_B = true,
+                        }
+                    }
                     return RatingOrMove::Move(
                         case.choose(&mut thread_rng())
                             .unwrap()
@@ -64,14 +69,8 @@ impl Node {
                             .unwrap()
                             .to_move(&chess)
                             .unwrap(),
-                    )
+                    );
                 }
-                _ => unsafe {
-                    match BOT_COLOR {
-                        Color::White => USE_BOOK_MOVE_W = false,
-                        Color::Black => USE_BOOK_MOVE_B = false,
-                    }
-                },
             }
         }
 

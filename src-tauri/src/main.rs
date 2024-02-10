@@ -38,48 +38,113 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     // Start defining the height of the tree
     let tree_height;
 
-    if fullmoves == NonZeroU32::new(1).unwrap() {
-        // Making sure the game has just begun prevents the issue when the brancing rate from the
-        // previous game was used in the new one for the bot of this colour.
-        tree_height = MIN_TREE_HEIGHT;
-        unsafe {
-            clear_positions_in_check!();
-            match bot_color {
-                Color::White => PREVIOUS_TREE_HEIGHT_WHITE = MIN_TREE_HEIGHT,
-                Color::Black => PREVIOUS_TREE_HEIGHT_BLACK = MIN_TREE_HEIGHT,
-            };
-        }
-    } else {
-        let branching_rate = unsafe {
-            match bot_color {
-                Color::White => BRANCHING_RATE_WHITE,
-                Color::Black => BRANCHING_RATE_BLACK,
-            }
-        };
-
-        if branching_rate > 1.0 {
-            let mut height_estimation =
-                ((TIME_TO_THINK as f64) / unsafe { ONE_NODE_HANDLE_TIME }).log(branching_rate);
-
-            height_estimation = height_estimation.max(MIN_TREE_HEIGHT as f64); // If the
-                                                                               // estimation value is too low
-            let current_tree_height = unsafe { TREE_HEIGHT };
-
-            tree_height = current_tree_height
-                + match (height_estimation as i32).cmp(&current_tree_height) {
-                    Ordering::Greater => 1,
-                    Ordering::Less => -1,
-                    _ => 0,
-                }
-        } else {
-            tree_height = unsafe {
+    match fullmoves == NonZeroU32::new(1).unwrap() {
+        true => {
+            // Making sure the game has just begun prevents the issue when the brancing rate from the
+            // previous game was used in the new one for the bot of this colour.
+            tree_height = MIN_TREE_HEIGHT;
+            unsafe {
+                clear_positions_in_check!();
                 match bot_color {
-                    Color::White => PREVIOUS_TREE_HEIGHT_WHITE,
-                    Color::Black => PREVIOUS_TREE_HEIGHT_BLACK,
+                    Color::White => PREVIOUS_TREE_HEIGHT_WHITE = MIN_TREE_HEIGHT,
+                    Color::Black => PREVIOUS_TREE_HEIGHT_BLACK = MIN_TREE_HEIGHT,
+                };
+            }
+        }
+        false => {
+            if unsafe {
+                match BOT_COLOR {
+                    Color::White => LAST_MOVE_FROM_BOOK_W,
+                    Color::Black => LAST_MOVE_FROM_BOOK_B,
+                }
+            } {
+                tree_height = MIN_TREE_HEIGHT
+            } else {
+                let branching_rate = unsafe {
+                    match bot_color {
+                        Color::White => BRANCHING_RATE_WHITE,
+                        Color::Black => BRANCHING_RATE_BLACK,
+                    }
+                };
+
+                if branching_rate > 1.0 {
+                    let mut height_estimation = ((TIME_TO_THINK as f64)
+                        / unsafe { ONE_NODE_HANDLE_TIME })
+                    .log(branching_rate);
+
+                    height_estimation = height_estimation.max(MIN_TREE_HEIGHT as f64); // If the
+                                                                                       // estimation value is too low
+                    let current_tree_height = unsafe { TREE_HEIGHT };
+
+                    tree_height = current_tree_height
+                        + match (height_estimation as i32).cmp(&current_tree_height) {
+                            Ordering::Greater => 1,
+                            Ordering::Less => -1,
+                            _ => 0,
+                        }
+                } else {
+                    tree_height = unsafe {
+                        match bot_color {
+                            Color::White => PREVIOUS_TREE_HEIGHT_WHITE,
+                            Color::Black => PREVIOUS_TREE_HEIGHT_BLACK,
+                        }
+                    }
                 }
             }
         }
     }
+
+    // if fullmoves == NonZeroU32::new(1).unwrap() {
+    //     // Making sure the game has just begun prevents the issue when the brancing rate from the
+    //     // previous game was used in the new one for the bot of this colour.
+    //     tree_height = MIN_TREE_HEIGHT;
+    //     unsafe {
+    //         clear_positions_in_check!();
+    //         match bot_color {
+    //             Color::White => PREVIOUS_TREE_HEIGHT_WHITE = MIN_TREE_HEIGHT,
+    //             Color::Black => PREVIOUS_TREE_HEIGHT_BLACK = MIN_TREE_HEIGHT,
+    //         };
+    //     }
+    // } else {
+    //     if unsafe {
+    //         match BOT_COLOR {
+    //             Color::White => LAST_MOVE_FROM_BOOK_W,
+    //             Color::Black => LAST_MOVE_FROM_BOOK_B,
+    //         }
+    //     } {
+    //         tree_height = MIN_TREE_HEIGHT
+    //     } else {
+    //         let branching_rate = unsafe {
+    //             match bot_color {
+    //                 Color::White => BRANCHING_RATE_WHITE,
+    //                 Color::Black => BRANCHING_RATE_BLACK,
+    //             }
+    //         };
+    //
+    //         if branching_rate > 1.0 {
+    //             let mut height_estimation =
+    //                 ((TIME_TO_THINK as f64) / unsafe { ONE_NODE_HANDLE_TIME }).log(branching_rate);
+    //
+    //             height_estimation = height_estimation.max(MIN_TREE_HEIGHT as f64); // If the
+    //                                                                                // estimation value is too low
+    //             let current_tree_height = unsafe { TREE_HEIGHT };
+    //
+    //             tree_height = current_tree_height
+    //                 + match (height_estimation as i32).cmp(&current_tree_height) {
+    //                     Ordering::Greater => 1,
+    //                     Ordering::Less => -1,
+    //                     _ => 0,
+    //                 }
+    //         } else {
+    //             tree_height = unsafe {
+    //                 match bot_color {
+    //                     Color::White => PREVIOUS_TREE_HEIGHT_WHITE,
+    //                     Color::Black => PREVIOUS_TREE_HEIGHT_BLACK,
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     unsafe {
         match bot_color {
@@ -96,7 +161,8 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         BOT_COLOR = bot_color;
         BOT_WANTS_DRAW = root_weight <= DRAW_LEVEL || chess.has_insufficient_material(bot_color);
         OPENING_IS_GOING = fullmoves <= NonZeroU32::new(MAX_OPENING_MOVES).unwrap();
-        DRAW_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (TREE_HEIGHT + 1)
+        DRAW_WEIGHT_STARTING_POINT = CHECKMATE_WEIGHT_STARTING_POINT - (TREE_HEIGHT + 1);
+        (LAST_MOVE_FROM_BOOK_W, LAST_MOVE_FROM_BOOK_B) = (true, true);
     }
 
     let now = Instant::now();
