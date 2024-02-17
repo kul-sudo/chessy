@@ -143,15 +143,15 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         }
     }
 
-    let last_processed_fen = LAST_PROCESSED_FEN.get_or_init(|| None);
-
-    // 1. The bot's playing as white, and it's now its first move.
-    // OR
-    // 2. It is not the first move of the game for the bot, and the previous move was done
-    //    by a real person
-    if last_processed_fen.is_none() || last_processed_fen.clone().is_some_and(|x| fen != x) {
-        add_to_previous_positions(fen.clone());
-        fen_repeated_5_times!(fen);
+    if let Some(last_processed_fen) = LAST_PROCESSED_FEN.get() {
+        // 1. The bot's playing as white, and it's now its first move.
+        // OR
+        // 2. It is not the first move of the game for the bot, and the previous move was done
+        //    by a real person
+        if last_processed_fen.clone().is_some_and(|x| fen != x) {
+            add_to_previous_positions(fen.clone());
+            fen_repeated_5_times!(fen);
+        }
     }
 
     unsafe {
