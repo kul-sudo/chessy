@@ -18,11 +18,37 @@ use utils::*;
 use node::Node;
 use shakmaty::{fen::Fen, CastlingMode, Chess, Color, EnPassantMode, Position};
 
+fn add_to_previous_positions(new_fen: Fen) {
+    PREVIOUS_POSITIONS
+        .lock()
+        .unwrap()
+        .entry(get_extended_position!(new_fen.to_string()))
+        .and_modify(|value| *value += 1)
+        .or_insert(1);
+
+    let _ = LAST_PROCESSED_FEN.set(Some(new_fen));
+}
+
+macro_rules! fen_repeated_5_times {
+    ($fen:expr) => {{
+        if *PREVIOUS_POSITIONS
+            .lock()
+            .unwrap()
+            .get(&get_extended_position!($fen.to_string()))
+            .unwrap()
+            == 5
+        {
+            return "5-repetition".to_string();
+        }
+    }};
+}
+
 #[tauri::command(async, rename_all = "snake_case")]
 /// Get the best move for the given FEN.
 async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
     // Create an instance of Chess with the current FEN
     let fen = current_fen.parse::<Fen>().unwrap();
+
     let mut chess: Chess = fen.clone().into_position(CastlingMode::Standard).unwrap();
 
     let tree_building_time: u128;
@@ -40,9 +66,8 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
 
     match fullmoves == NonZeroU32::new(1).unwrap() {
         true => {
-            // Making sure the game has just begun prevents the issue when the brancing rate from the
-            // previous game was used in the new one for the bot of this colour.
             tree_height = MIN_TREE_HEIGHT;
+
             unsafe {
                 clear_positions_in_check!();
                 match bot_color {
@@ -50,12 +75,36 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
                     Color::Black => PREVIOUS_TREE_HEIGHT_BLACK = MIN_TREE_HEIGHT,
                 };
             }
+
+            if chess.halfmoves() == 0 {
+                unsafe { FIRST_MOVE_MADE_BY_BOT = true }
+            }
+
+            // The bot's playing as black against a real person playing as white
+            let condition = bot_color == Color::Black && unsafe { !FIRST_MOVE_MADE_BY_BOT };
+
+            if bot_color == Color::White || condition {
+                // Clean up
+                PREVIOUS_POSITIONS.lock().unwrap().clear();
+                let _ = LAST_PROCESSED_FEN.set(None);
+
+                if condition {
+                    add_to_previous_positions(
+                        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+                            .parse::<Fen>()
+                            .unwrap(),
+                    )
+                }
+            }
         }
         false => {
+            // Prepare for the next game
+            unsafe { FIRST_MOVE_MADE_BY_BOT = false }
+
             if unsafe {
                 match BOT_COLOR {
-                    Color::White => LAST_MOVE_FROM_BOOK_W,
                     Color::Black => LAST_MOVE_FROM_BOOK_B,
+                    Color::White => LAST_MOVE_FROM_BOOK_W,
                 }
             } {
                 tree_height = MIN_TREE_HEIGHT
@@ -94,57 +143,16 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         }
     }
 
-    // if fullmoves == NonZeroU32::new(1).unwrap() {
-    //     // Making sure the game has just begun prevents the issue when the brancing rate from the
-    //     // previous game was used in the new one for the bot of this colour.
-    //     tree_height = MIN_TREE_HEIGHT;
-    //     unsafe {
-    //         clear_positions_in_check!();
-    //         match bot_color {
-    //             Color::White => PREVIOUS_TREE_HEIGHT_WHITE = MIN_TREE_HEIGHT,
-    //             Color::Black => PREVIOUS_TREE_HEIGHT_BLACK = MIN_TREE_HEIGHT,
-    //         };
-    //     }
-    // } else {
-    //     if unsafe {
-    //         match BOT_COLOR {
-    //             Color::White => LAST_MOVE_FROM_BOOK_W,
-    //             Color::Black => LAST_MOVE_FROM_BOOK_B,
-    //         }
-    //     } {
-    //         tree_height = MIN_TREE_HEIGHT
-    //     } else {
-    //         let branching_rate = unsafe {
-    //             match bot_color {
-    //                 Color::White => BRANCHING_RATE_WHITE,
-    //                 Color::Black => BRANCHING_RATE_BLACK,
-    //             }
-    //         };
-    //
-    //         if branching_rate > 1.0 {
-    //             let mut height_estimation =
-    //                 ((TIME_TO_THINK as f64) / unsafe { ONE_NODE_HANDLE_TIME }).log(branching_rate);
-    //
-    //             height_estimation = height_estimation.max(MIN_TREE_HEIGHT as f64); // If the
-    //                                                                                // estimation value is too low
-    //             let current_tree_height = unsafe { TREE_HEIGHT };
-    //
-    //             tree_height = current_tree_height
-    //                 + match (height_estimation as i32).cmp(&current_tree_height) {
-    //                     Ordering::Greater => 1,
-    //                     Ordering::Less => -1,
-    //                     _ => 0,
-    //                 }
-    //         } else {
-    //             tree_height = unsafe {
-    //                 match bot_color {
-    //                     Color::White => PREVIOUS_TREE_HEIGHT_WHITE,
-    //                     Color::Black => PREVIOUS_TREE_HEIGHT_BLACK,
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    let last_processed_fen = LAST_PROCESSED_FEN.get_or_init(|| None);
+
+    // 1. The bot's playing as white, and it's now its first move.
+    // OR
+    // 2. It is not the first move of the game for the bot, and the previous move was done
+    //    by a real person
+    if last_processed_fen.is_none() || last_processed_fen.clone().is_some_and(|x| fen != x) {
+        add_to_previous_positions(fen.clone());
+        fen_repeated_5_times!(fen);
+    }
 
     unsafe {
         match bot_color {
@@ -210,12 +218,10 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         chess
     };
 
+    let fen_after_move = Fen::from_position(chess_after_move.clone(), EnPassantMode::Legal);
+
     if unsafe { !BOT_WANTS_DRAW } && chess_after_move.is_check() {
-        let position =
-            get_only_position!(
-                Fen::from_position(chess_after_move, EnPassantMode::Legal).to_string()
-            )
-            .to_string();
+        let position = get_only_position!(fen_after_move.to_string()).to_string();
 
         (match bot_color {
             Color::White => POSITIONS_IN_CHECK_B.lock(),
@@ -224,6 +230,9 @@ async fn get_move(app_handle: AppHandle, current_fen: String) -> String {
         .unwrap()
         .push(position);
     }
+
+    add_to_previous_positions(fen_after_move.clone());
+    fen_repeated_5_times!(fen_after_move);
 
     move_to_return.to_string()
 }

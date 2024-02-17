@@ -14,7 +14,7 @@ const SHOW_CHESSBOARD = true
 const WRITE_TO_FILE = true
 const BOT_VS_BOT = true
 const BOT_COLOUR: ChessJS.Color = 'b'
-const DEBUG = false
+const DEBUG = true
 
 let gameHistory: string[] = []
 
@@ -23,13 +23,16 @@ const Chess = typeof ChessJS === 'function' ? ChessJS : ChessJS.Chess
 const isGameOver = (chess: ChessJS.Chess) => {
   return DEBUG
     ? chess.isCheckmate() ||
-        chess.isStalemate() ||
-        chess.isThreefoldRepetition()
+        chess.isDraw() ||
+        chess.isGameOver() ||
+        chess.isStalemate()
     : chess.isGameOver()
 }
 
 const ChessboardPage: NextPage = () => {
-  const [game, setGame] = useState(new Chess())
+  const [game, setGame] = useState(
+    new Chess('rr3b1k/6nn/7N/8/8/8/PPPPPPPP/4K3 w - - 0 1')
+  )
   const [moveFrom, setMoveFrom] = useState<Square | ''>()
   const [moveTo, setMoveTo] = useState<Square | null>(null)
   const [showPromotionDialog, setShowPromotionDialog] = useState(false)
@@ -67,9 +70,15 @@ const ChessboardPage: NextPage = () => {
     invoke<Move>('get_move', {
       current_fen: game.fen()
     }).then(move => {
-      makeMove(move)
-      setIsLoading(false)
-      setMovesN(prevValue => prevValue + 1)
+      if (move === '5-repetition') {
+        resetGame()
+        return
+      }
+      setTimeout(() => {
+        makeMove(move)
+        setIsLoading(false)
+        setMovesN(prevValue => prevValue + 1)
+      }, 1000)
     })
   }, [game, makeMove])
 

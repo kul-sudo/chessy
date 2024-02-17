@@ -15,6 +15,17 @@ macro_rules! get_only_position {
 }
 
 #[macro_export]
+macro_rules! get_extended_position {
+    ($fen:expr) => {{
+        $fen.rsplitn(3, ' ')
+            .collect::<Vec<&str>>()
+            .last()
+            .unwrap()
+            .to_string()
+    }};
+}
+
+#[macro_export]
 macro_rules! clear_positions_in_check {
     () => {
         for positions_in_check in [&POSITIONS_IN_CHECK_W, &POSITIONS_IN_CHECK_B] {

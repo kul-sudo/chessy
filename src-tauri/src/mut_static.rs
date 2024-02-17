@@ -1,6 +1,6 @@
-use once_cell::sync::Lazy;
-use shakmaty::Color;
-use std::sync::Mutex;
+use once_cell::sync::{Lazy, OnceCell};
+use shakmaty::{fen::Fen, Color};
+use std::{collections::HashMap, sync::Mutex};
 
 pub static mut LAST_MOVE_FROM_BOOK_W: bool = true;
 pub static mut LAST_MOVE_FROM_BOOK_B: bool = true;
@@ -11,6 +11,11 @@ pub static POSITIONS_IN_CHECK_W: Lazy<Mutex<Vec<String>>> =
     Lazy::new(|| Mutex::new(Vec::with_capacity(25)));
 pub static POSITIONS_IN_CHECK_B: Lazy<Mutex<Vec<String>>> =
     Lazy::new(|| Mutex::new(Vec::with_capacity(25)));
+pub static PREVIOUS_POSITIONS: Lazy<Mutex<HashMap<String, u8>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+pub static LAST_PROCESSED_FEN: OnceCell<Option<Fen>> = OnceCell::new();
+
+pub static mut FIRST_MOVE_MADE_BY_BOT: bool = false;
 
 pub static mut ONE_NODE_HANDLE_TIME: f64 = 0.0;
 

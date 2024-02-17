@@ -7,9 +7,9 @@ use rand::{seq::SliceRandom, thread_rng};
 use shakmaty::{fen::Fen, uci::Uci, CastlingMode, Chess, Color, EnPassantMode, Position, Role};
 
 use crate::{
-    constants::*, correct_rating, get_only_position, get_piece_weight, handle_checkmate_or_draw,
-    mut_static::*, opening_book::opening_book, optimise, queen_or_king_first_move_handle,
-    utils::RatingOrMove,
+    constants::*, correct_rating, five_repetitions_weight, get_extended_position,
+    get_only_position, get_piece_weight, handle_checkmate_or_draw, mut_static::*,
+    opening_book::opening_book, optimise, queen_or_king_first_move_handle, utils::RatingOrMove,
 };
 
 pub struct Node {
@@ -40,15 +40,7 @@ impl Node {
 
         let layer_is_0 = self.layer_number == 0;
         if layer_is_0 {
-            match opening_book(
-                self.fen
-                    .clone()
-                    .to_string()
-                    .rsplitn(3, ' ')
-                    .collect::<Vec<&str>>()
-                    .last()
-                    .unwrap(),
-            ) {
+            match opening_book(get_extended_position!(self.fen.to_string()).as_str()) {
                 case if case.is_empty() => unsafe {
                     match BOT_COLOR {
                         Color::White => LAST_MOVE_FROM_BOOK_W = false,
@@ -81,6 +73,10 @@ impl Node {
         if self.layer_number > 0 {
             // JS doesn't call Rust if there's a checkmate or stalemate
             handle_checkmate_or_draw!(chess, bot_turn, self.layer_number);
+
+            if self.layer_number == 1 {
+                five_repetitions_weight!(get_extended_position!(self.fen.to_string()));
+            }
         }
 
         // Handling all the other cases (everything all the way down)

@@ -1,6 +1,9 @@
+use once_cell::sync::Lazy;
+use shakmaty::fen::Fen;
+
 static NANOSECOND: u128 = 1000000000;
 
-static MAX_TIME_SECS: u128 = 5; // The time limit for handling one move of the bot in seconds
+static MAX_TIME_SECS: u128 = 1; // The time limit for handling one move of the bot in seconds
 pub static TIME_TO_THINK: u128 = MAX_TIME_SECS * NANOSECOND; // In nanoseconds
 
 pub static MIN_TREE_HEIGHT: i32 = 4; // >= 3
