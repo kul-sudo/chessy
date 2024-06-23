@@ -1,3 +1,0 @@
-- Before optimization (tree height 4):
-184 halfmoves
-14 seconds
