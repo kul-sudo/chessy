@@ -12,7 +12,8 @@ use constants::*;
 use mut_static::*;
 use node::Node;
 use shakmaty::{
-    fen::Fen, CastlingMode, Chess, Color, EnPassantMode, File, Piece, Position, Rank, Role, Square, Move
+    fen::Fen, CastlingMode, Chess, Color, EnPassantMode, File, Move, Piece, Position, Rank, Role,
+    Square,
 };
 use std::collections::HashSet;
 use std::f32::consts::PI;
@@ -301,29 +302,11 @@ fn draw_square(pos: Vec2, square: Square, tile_size: f32) {
 }
 
 fn get_number_from_file(file: File) -> u8 {
-    match file {
-        File::A => 0,
-        File::B => 1,
-        File::C => 2,
-        File::D => 3,
-        File::E => 4,
-        File::F => 5,
-        File::G => 6,
-        File::H => 6,
-    }
+    file as u8
 }
 
 fn get_number_from_rank(rank: Rank) -> u8 {
-    match rank {
-        Rank::First => 0,
-        Rank::Second => 1,
-        Rank::Third => 2,
-        Rank::Fourth => 3,
-        Rank::Fifth => 4,
-        Rank::Sixth => 5,
-        Rank::Seventh => 6,
-        Rank::Eighth => 7,
-    }
+    rank as u8
 }
 
 #[macroquad::main(window_conf)]
@@ -417,9 +400,9 @@ async fn main() {
 
         for move_ in &highlighted_squares {
             draw_circle(
-                get_number_from_file(move_.to().file()) as f32 * tile_size,
-                get_number_from_rank(move_.to().rank()) as f32 * tile_size,
-                50.0,
+                get_number_from_file(move_.to().file()) as f32 * tile_size + tile_size / 2.0,
+                get_number_from_rank(move_.to().rank()) as f32 * tile_size + tile_size / 2.0,
+                tile_size * 0.05,
                 GRAY,
             );
         }
@@ -437,6 +420,8 @@ async fn main() {
                 .contains(Vec2::from(mouse_position()))
                 {
                     //
+                    //
+                            highlighted_squares.clear();
                     for legal_move in &pos.legal_moves() {
                         if legal_move.from() == Some(square) {
                             //dbg!();
@@ -445,12 +430,6 @@ async fn main() {
                         }
                     }
                 }
-                //draw_piece(
-                //    vec2(square.file() as u8 as f32, square.rank() as u8 as f32),
-                //    &piece,
-                //    &sprites,
-                //    tile_size,
-                //);
             }
         }
 
