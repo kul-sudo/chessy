@@ -312,8 +312,9 @@ fn get_number_from_rank(rank: Rank) -> u8 {
 #[macroquad::main(window_conf)]
 async fn main() {
     let pos = Chess::default();
+
     let board = pos.board();
-    let mut highlighted_squares: HashSet<Move> = HashSet::new();
+    let mut highlighted_squares: HashSet<Move> = HashSet::with_capacity(512);
 
     let sprites = SpritesByColor {
         white: Sprites {
@@ -391,7 +392,10 @@ async fn main() {
 
         for (square, piece) in board.clone().into_iter() {
             draw_piece(
-                vec2(square.file() as u8 as f32, square.rank() as u8 as f32),
+                vec2(
+                    get_number_from_file(square.file()) as f32,
+                    get_number_from_rank(square.rank()) as f32,
+                ),
                 &piece,
                 &sprites,
                 tile_size,
@@ -400,36 +404,39 @@ async fn main() {
 
         for move_ in &highlighted_squares {
             draw_circle(
-                get_number_from_file(move_.to().file()) as f32 * tile_size + tile_size / 2.0,
-                get_number_from_rank(move_.to().rank()) as f32 * tile_size + tile_size / 2.0,
+                move_.to().file() as u8 as f32 * tile_size + tile_size / 2.0,
+                (7 - move_.to().rank() as u8) as f32 * tile_size + tile_size / 2.0,
                 tile_size * 0.05,
                 GRAY,
             );
         }
 
         if is_mouse_button_released(MouseButton::Left) {
-            for (square, piece) in board.clone().into_iter() {
-                let file = get_number_from_file(square.file());
-                let rank = get_number_from_rank(square.rank());
-                if Rect::new(
-                    file as f32 * tile_size,
-                    rank as f32 * tile_size,
-                    tile_size,
-                    tile_size,
-                )
-                .contains(Vec2::from(mouse_position()))
-                {
-                    //
-                    //
-                            highlighted_squares.clear();
-                    for legal_move in &pos.legal_moves() {
-                        if legal_move.from() == Some(square) {
-                            //dbg!();
-                            //println!("{:?}", square);
-                            highlighted_squares.insert(legal_move.clone());
-                        }
-                    }
-                }
+            let (mouse_pos_x, mouse_pos_y) = mouse_position();
+
+            let clicked_file = (mouse_pos_x / tile_size) as u8;
+            let clicked_rank = 7 - (mouse_pos_y / tile_size) as u8;
+            let square = clicked_rank * 8 + clicked_file;
+
+            if square > 63 {
+                return;
+            }
+
+            println!("{:?} {:?} {:?}", square, clicked_file, clicked_rank);
+            let square_converted = unsafe { transmute::<u8, Square>(square) };
+
+            //println!("{:?}", square_converted);
+
+            let legal_moves_for_square = pos
+                .legal_moves()
+                .into_iter()
+                .filter(|legal_move| legal_move.from() == Some(square_converted));
+
+            println!("{:?}", square_converted);
+            highlighted_squares.clear();
+            for legal_move_for_square in legal_moves_for_square {
+                println!("{:?}", legal_move_for_square);
+                highlighted_squares.insert(legal_move_for_square.clone());
             }
         }
 
